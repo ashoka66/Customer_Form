@@ -1,0 +1,536 @@
+Background
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  /* background: linear-gradient(135deg, #0a2a55, #08306b); */
+  margin: 0;
+  padding: 0;
+}
+
+/* Container */
+.form-container {
+  max-width: 600px;
+  margin: 0 auto;
+  /* background: #ffffff; */
+  padding: 30px;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  animation: fadeIn 0.6s ease-in-out;
+}
+
+/* ✅ HEADER LOGO STYLING */
+.header-logo {
+  width: 100%;
+  max-width: 550px;
+  height: auto;
+  display: block;
+  margin: 0 auto 25px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(10, 42, 85, 0.15);
+}
+
+/* Heading */
+h2 {
+  text-align: center;
+  margin-bottom: 25px;
+  color: #0a2a55;
+}
+
+/* Sub headings */
+h3 {
+  margin-top: 25px;
+  color: #08306b;
+  border-bottom: 2px solid #eee;
+  padding-bottom: 5px;
+}
+
+/* Form group */
+.form-group {
+  margin: bottom 0;;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.form-group input[type="text"] {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.kyc-option {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.kyc-option label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    cursor: pointer;
+    font-size: 14px;
+    white-space: nowrap; 
+}
+
+.kyc-option input[type="radio"] {
+    margin: 0;
+}
+
+/* Mobile Responsive */
+@media (max-width: 600px) {
+    .kyc-option {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .form-group input[type="text"] {
+        padding: 10px;
+    }
+}
+/* Labels */
+label {
+  font-weight: 600;
+  margin-bottom: 6px;
+  display: block;
+  color: #333;
+}
+
+/* Inputs */
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 11px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+/* Focus effect */
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #0a2a55;
+  outline: none;
+  box-shadow: 0 0 6px rgba(10, 42, 85, 0.2);
+}
+
+/* Buttons */
+button {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #0a2a55, #08306b);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+/* Button hover */
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Add Loan button (secondary) */
+button[type="button"] {
+  background: #e6ecf5;
+  color: #0a2a55;
+  margin-top: 10px;
+}
+
+button[type="button"]:hover {
+  background: #d4e0f2;
+}
+
+/* Loan block styling */
+#loanContainer .form-group {
+  background: #f8f9fc;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 10px;
+  border: 1px solid #e3e8f0;
+}
+
+.loan-block {
+  background: #f8f9fc;
+
+  padding: 20px;
+
+  border-radius: 12px;
+
+  margin: 20px 0;
+
+  border: 1px solid #e3e8f0;
+
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+
+  overflow:hidden;
+}
+
+/* Employeement Block start */
+.employment-option{
+display:flex;
+gap:20px;
+margin-top:10px;
+flex-wrap:wrap;
+}
+
+.employment-option label{
+display:inline-flex !important;
+align-items:center;
+gap:6px;
+white-space:nowrap;
+}
+
+textarea{
+width:100%;
+min-height:90px;
+padding:12px;
+border:1px solid #ccc;
+border-radius:8px;
+resize:vertical;
+}
+
+select{
+width:100%;
+padding:12px;
+border:1px solid #ccc;
+border-radius:8px;
+}
+/* Employeement Block ends  */
+/* Divider */
+hr {
+  border: none;
+  border-top: 1px solid #ddd;
+  margin-top: 10px;
+}
+
+#loanContainer,
+#coLoanContainer,
+#legalDocsContainer{
+
+    display:flex;
+    flex-direction:column;
+
+    gap:24px;
+
+    margin-top:20px;
+}
+
+/* Prevent overflow */
+
+*{
+    box-sizing:border-box;
+}
+
+/* Better textarea spacing */
+
+textarea{
+    margin-top:4px;
+}
+
+/* Better section spacing */
+
+.form-container > h3{
+    margin-top:35px;
+    margin-bottom:20px;
+}
+
+
+
+/* ✅ CO-APPLICANT LOAN BLOCKS */
+.co-loan-block {
+  background: linear-gradient(135deg, #f5f7fa, #e8ecf1);
+
+  padding: 20px;
+
+  border-radius: 12px;
+
+  margin: 20px 0;
+
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  border-left: 4px solid #0a2a55;
+  box-shadow: 0 2px 8px rgba(10, 42, 85, 0.08);
+}
+
+.co-loan-block .form-group {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-bottom: 12px;
+}
+
+.co-loan-block .form-group label {
+  color: #0a2a55;
+  font-weight: 600;
+}
+
+.co-loan-block .form-group input,
+.co-loan-block .form-group select {
+  border: 1px solid #d4dfe8;
+  background: #ffffff;
+}
+
+.co-loan-block .form-group input:focus,
+.co-loan-block .form-group select:focus {
+  border-color: #0a2a55;
+  background: #f9fafb;
+}
+
+.co-loan-block button[type="button"] {
+  margin-top: 12px;
+  padding: 10px;
+  background: #ff6b6b;
+  color: white;
+  font-weight: 600;
+}
+
+.co-loan-block button[type="button"]:hover {
+  background: #ff5252;
+}
+
+/* ✅ SECTION SPACING */
+.form-container h3 {
+  margin-top: 28px;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #0a2a55;
+  font-size: 16px;
+  color: #0a2a55;
+}
+
+.form-container h3:first-of-type {
+  margin-top: 8px;
+}
+
+/* ✅ CONTAINER IMPROVEMENTS */
+.form-container {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
+}
+
+/* ✅ IMPROVED LOAN CONTAINER SPACING */
+#loanContainer,
+#coLoanContainer {
+  margin: 18px 0;
+  padding: 8px 0;
+}
+
+#loanContainer .loan-block + .loan-block,
+#coLoanContainer .co-loan-block + .co-loan-block {
+  margin-top: 15px;
+}
+
+/* ✅ ADD LOAN/LOAN BUTTONS */
+button[type="button"][onclick*="addLoan"],
+button[type="button"][onclick*="addCoLoan"] {
+  margin: 20px 0;
+  background: linear-gradient(135deg, #e8ecf5, #d4dfe8);
+  color: #0a2a55;
+  border: 2px dashed #0a2a55;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+button[type="button"][onclick*="addLoan"]:hover,
+button[type="button"][onclick*="addCoLoan"]:hover {
+  background: #d4dfe8;
+  border-style: solid;
+  transform: translateY(-2px);
+}
+
+/* ✅ BACK SIDE IMPROVEMENTS */
+.flip-back {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
+}
+
+.legal-doc-block {
+  background: linear-gradient(135deg, #f5f7fa, #e8ecf1);
+
+  padding: 20px;
+
+  border-radius: 12px;
+
+  margin: 20px 0;
+
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  border-left: 4px solid #0a2a55;
+  box-shadow: 0 2px 8px rgba(10, 42, 85, 0.08);
+}
+
+.legal-doc-block .form-group {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-bottom: 12px;
+}
+
+/* ✅ RESPONSIVE IMPROVEMENTS */
+@media (max-width: 600px) {
+  .form-container {
+    max-width: 100%;
+    margin: 40px 15px;
+    padding: 20px 15px;
+  }
+
+  .loan-block,
+  .co-loan-block,
+  .legal-doc-block {
+    padding: 14px;
+    margin: 12px 0;
+  }
+
+  .form-container h3 {
+    font-size: 15px;
+    margin-top: 20px;
+  }
+
+  .kyc-option {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  button {
+    padding: 11px;
+    font-size: 14px;
+  }
+
+  .flip-front,
+  .flip-back {
+    min-height: auto;
+  }
+
+  .flip-card {
+    min-height: 100%;
+  }
+
+  #coApplicantFields {
+    display: flex;
+    flex-direction: column;
+  }
+
+  #coApplicantFields input,
+  #coApplicantFields select {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+}
+
+/* Tablet responsive */
+@media (max-width: 1024px) and (min-width: 601px) {
+  .form-container {
+    max-width: 95%;
+  }
+
+  .loan-block,
+  .co-loan-block,
+  .legal-doc-block {
+    padding: 16px;
+    margin: 14px 0;
+  }
+}
+
+
+/* back side */
+.flip-container{
+    perspective:1200px;
+    width:100%;
+}
+
+.flip-card{
+    position:relative;
+    width:100%;
+    transform-style:preserve-3d;
+    transition:transform 0.8s ease;
+
+    min-height:auto;
+}
+
+
+.flip-card.active{
+    transform:rotateY(180deg);
+}
+
+.flip-front,
+.flip-back{
+
+    width:100%;
+    background:#f8f9fc;
+
+    backface-visibility:hidden;
+    -webkit-backface-visibility:hidden;
+
+    overflow:visible;
+}
+
+.flip-front{
+    position:relative;
+    z-index:2;
+}
+
+.flip-back{
+    position:absolute;
+    top:0;
+    left:0;
+    transform:rotateY(180deg);
+
+    min-height:auto;
+
+    padding:0 0 20px;
+
+    box-sizing:border-box;
+}
+/* Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 600px) {
+  .form-container {
+    margin: 20px;
+    padding: 20px;
+  }
+}
+
+/* pop up */
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
