@@ -2024,7 +2024,12 @@
         const updated = new Date(c.updatedAt).toLocaleDateString("en-IN", {
           day: "2-digit", month: "short", year: "numeric"
         });
-        const phoneClean = phone.replace(/\D/g, "");
+        const rawPhoneDigits = (phone || "").replace(/\D/g, "");
+        let phoneClean = rawPhoneDigits;
+        // If user provided a 10-digit local number, assume India and prepend country code 91
+        if (rawPhoneDigits.length === 10) phoneClean = `91${rawPhoneDigits}`;
+        // If number starts with one or more leading zeros, strip them
+        else if (/^0+/.test(rawPhoneDigits)) phoneClean = rawPhoneDigits.replace(/^0+/, "");
         const waMsg = encodeURIComponent(
           `Hello ${name}, please review and update your loan application: ${location.origin}/edit/${c.customerId}`
         );
