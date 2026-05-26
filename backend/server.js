@@ -648,6 +648,23 @@ app.get("/download-excel", (_req, res) => {
   res.download(EXCEL_PATH, "customers.xlsx");
 });
 
+// Redirect to Google Sheet export if configured, otherwise fall back to Excel
+app.get("/download-googlesheet", async (_req, res) => {
+  try {
+    if (SHEET_ID) {
+      // Public export URL (works if the sheet is accessible to the requester)
+      const exportUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=xlsx`;
+      return res.redirect(exportUrl);
+    }
+    if (fs.existsSync(EXCEL_PATH)) return res.download(EXCEL_PATH, "customers.xlsx");
+    res.status(404).json({ error: "No sheet or excel available" });
+  } catch (err) {
+    console.error("Download Google Sheet error:", err.message);
+    if (fs.existsSync(EXCEL_PATH)) return res.download(EXCEL_PATH, "customers.xlsx");
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.use((err, _req, res, _next) => {
   console.error(err);
   res.status(500).json({ error: err.message });
