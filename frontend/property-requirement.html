@@ -71,6 +71,23 @@
     }
     .btn-back:hover { background: rgba(255,255,255,0.3); }
 
+    .btn-logout {
+      background: rgba(255,255,255,0.18);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.35);
+      padding: 9px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-logout:hover { background: rgba(255,255,255,0.3); }
+
     /* ── PAGE LAYOUT ── */
     .page-wrap {
       max-width: 1100px;
@@ -675,13 +692,11 @@
   <h1><img src="./images/dashboard_header_img.png" alt="Dashboard"></h1>
   <div class="header-right">
     <a href="/dashboard" class="btn-back"><i class="bi bi-arrow-left"></i> Dashboard</a>
+    <button class="btn-logout" onclick="doLogout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
   </div>
 </div>
 
-<!-- ── PAGE WRAP ── -->
 <div class="page-wrap">
-
-  <!-- TITLE ROW -->
   <div class="page-title-row">
     <div class="page-title">
       <div class="page-title-icon"><i class="bi bi-building"></i></div>
@@ -1127,8 +1142,7 @@ function viewRecord(id) {
   document.getElementById("viewModal").classList.add("show");
 }
 function row(label, val) {
-  if (!val) return "";
-  return `<div class="detail-row"><span class="detail-label">${label}</span><span class="detail-value">${val}</span></div>`;
+  return `<div class="detail-row"><span class="detail-label">${label}</span><span class="detail-value">${val || "_"}</span></div>`;
 }
 
 ///////////////////////////////////////////////////////////////
@@ -1314,6 +1328,15 @@ function showToast(msg, type = "") {
 ///////////////////////////////////////////////////////////////
 loadRecords();
 setInterval(() => loadRecords(), 30000);
+
+async function doLogout() {
+  try {
+    await fetch("/auth/logout", { method: "POST" });
+  } catch (e) {
+    console.warn("Logout failed", e);
+  }
+  window.location.href = "/login";
+}
 </script>
 </body>
 </html>

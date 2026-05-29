@@ -246,6 +246,20 @@ const BankerRequirement = mongoose.model("BankerRequirement", new mongoose.Schem
     payslips:       { type: String, default: "3" },
     bankStmt:       { type: String, default: "6" },
     notes:          { type: String, default: "" }
+  },
+  files: {
+    cibilFile:      { type: String, default: "" },
+    payslip1:       { type: String, default: "" },
+    payslip2:       { type: String, default: "" },
+    payslip3:       { type: String, default: "" },
+    bankFiles:      { type: [String], default: [] },
+    form16:         { type: String, default: "" },
+    form26:         { type: String, default: "" },
+    itrFiles:       { type: [String], default: [] },
+    gstFiles:       { type: String, default: "" },
+    offerLetter:    { type: String, default: "" },
+    appointmentLetter: { type: String, default: "" },
+    relievingLetter:   { type: String, default: "" }
   }
 }, { timestamps: true }));
 
@@ -262,7 +276,9 @@ app.get("/api/banker-requirements", requireAuth, async (req, res) => {
 });
 
 // ── CREATE ──
-app.post("/api/banker-requirements", requireAuth, async (req, res) => {
+app.post("/api/banker-requirements", requireAuth, (req, res, next) => {
+  uploadFields(req, res, err => { if (err) return res.status(400).json({ error: err.message }); next(); });
+}, async (req, res) => {
   try {
     const { customerId, employmentType, loanAmount, loanType,
             cibil, income, bank, payslips, bankStmt, notes } = req.body;
@@ -273,6 +289,24 @@ app.post("/api/banker-requirements", requireAuth, async (req, res) => {
     let cid = (customerId || "").trim();
     if (!cid) cid = await generateCustomerId();
 
+    const uploadedFiles = req.files || {};
+    const movedFiles = moveFiles(uploadedFiles, cid);
+
+    const files = {
+      cibilFile:      movedFiles.cibilFile || "",
+      payslip1:       movedFiles.payslip1 || "",
+      payslip2:       movedFiles.payslip2 || "",
+      payslip3:       movedFiles.payslip3 || "",
+      bankFiles:      movedFiles.bankFiles ? (Array.isArray(movedFiles.bankFiles) ? movedFiles.bankFiles : [movedFiles.bankFiles]) : [],
+      form16:         movedFiles.form16File || "",
+      form26:         movedFiles.form26File || "",
+      itrFiles:       movedFiles.itrFiles ? (Array.isArray(movedFiles.itrFiles) ? movedFiles.itrFiles : [movedFiles.itrFiles]) : [],
+      gstFiles:       movedFiles.gstFiles || "",
+      offerLetter:    movedFiles.offerLetter || "",
+      appointmentLetter: movedFiles.appointmentLetter || "",
+      relievingLetter:   movedFiles.relievingLetter || ""
+    };
+
     const record = new BankerRequirement({
       customerId:  cid,
       status:      "submitted",
@@ -280,7 +314,8 @@ app.post("/api/banker-requirements", requireAuth, async (req, res) => {
       addedByName: req.session.user?.name  || "",
       data: { employmentType, loanAmount, loanType,
               cibil: cibil||"", income: income||"", bank: bank||"",
-              payslips: payslips||"3", bankStmt: bankStmt||"6", notes: notes||"" }
+              payslips: payslips||"3", bankStmt: bankStmt||"6", notes: notes||"" },
+      files
     });
     await record.save();
     res.json({ ok: true, record });
@@ -935,10 +970,11 @@ const storage = multer.diskStorage({
 const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
 const uploadFields = upload.fields([
   { name: "summaryPdf", maxCount: 1 }, { name: "cibilFile", maxCount: 1 },
+  { name: "payslip1", maxCount: 1 }, { name: "payslip2", maxCount: 1 }, { name: "payslip3", maxCount: 1 },
   { name: "offerLetter", maxCount: 1 }, { name: "appointmentLetter", maxCount: 1 },
   { name: "relievingLetter", maxCount: 1 }, { name: "form16File", maxCount: 1 },
   { name: "form26File", maxCount: 1 }, { name: "itrFiles", maxCount: 5 },
-  { name: "bankFiles", maxCount: 5 }, { name: "gstFiles", maxCount: 1 },
+  { name: "bankFiles", maxCount: 6 }, { name: "gstFiles", maxCount: 1 },
   { name: "labourFiles", maxCount: 1 }
 ]);
 
@@ -1096,6 +1132,26 @@ app.post("/submit-lead", (req, res, next) => {
     };
     const customer = new Customer({ customerId: newId, email, phone, version: 1, latestData: formData, files: newFiles });
     await customer.save();
+
+    // Auto-create empty PropertyRequirement and BankerRequirement records
+    const userEmail = req.session.user?.email || "";
+    const userName = req.session.user?.name || "";
+    
+    await PropertyRequirement.create({
+      customerId: newId,
+      status: "draft",
+      addedBy: userEmail,
+      addedByName: userName,
+      data: {}
+    });
+    
+    await BankerRequirement.create({
+      customerId: newId,
+      status: "draft",
+      addedBy: userEmail,
+      addedByName: userName,
+      data: {}
+    });
 
  //3.   
     await updateExcel(newId, formData, newFiles, 1);
@@ -1363,7 +1419,7 @@ app.get("/api/property-requirements/:id/pdf", requireAuth, async (req, res) => {
   }
 });
 
-app.use((err, _req, res, _next) => {
+app.use((err, _req, res, _next) => { 
   console.error(err);
   res.status(500).json({ error: err.message });
 });
