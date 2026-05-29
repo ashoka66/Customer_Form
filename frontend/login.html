@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — Customer Form</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #0a2a55 0%, #329A9A 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .login-wrapper {
+      width: 100%;
+      max-width: 420px;
+    }
+
+    /* LOGO */
+    .login-logo {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .login-logo img {
+      width: 280px;
+      max-width: 100%;
+      filter: brightness(0) invert(1);
+      opacity: 0.95;
+    }
+
+    /* CARD */
+    .login-card {
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 40px 36px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25);
+      animation: slideUp 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(30px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    .login-card h2 {
+      text-align: center;
+      color: #0a2a55;
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .login-card p {
+      text-align: center;
+      color: #888;
+      font-size: 13px;
+      margin-bottom: 28px;
+    }
+
+    /* FORM */
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      color: #0a2a55;
+      margin-bottom: 7px;
+    }
+
+    .input-wrap {
+      position: relative;
+    }
+
+    .input-wrap i {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #aab4c0;
+      font-size: 16px;
+    }
+
+    .input-wrap input {
+      width: 100%;
+      padding: 13px 14px 13px 42px;
+      border: 1.5px solid #dbe4ee;
+      border-radius: 10px;
+      font-size: 14px;
+      color: #1a1a2e;
+      outline: none;
+      transition: all 0.2s;
+      background: #f8fafc;
+    }
+
+    .input-wrap input:focus {
+      border-color: #0a2a55;
+      background: #fff;
+      box-shadow: 0 0 0 4px rgba(10, 42, 85, 0.08);
+    }
+
+    /* PASSWORD TOGGLE */
+    .toggle-pw {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      color: #aab4c0;
+      font-size: 16px;
+      border: none;
+      background: none;
+      padding: 0;
+      width: auto;
+    }
+
+    .toggle-pw:hover { color: #0a2a55; }
+
+    /* LOGIN BUTTON */
+    .login-btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #0a2a55, #1456a0);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .login-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(10, 42, 85, 0.25);
+    }
+
+    .login-btn:active { transform: translateY(0); }
+
+    .login-btn:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* ERROR BOX */
+    .error-box {
+      display: none;
+      background: #fdeaea;
+      color: #c0392b;
+      border: 1px solid #f5c6cb;
+      border-radius: 8px;
+      padding: 11px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 18px;
+      text-align: center;
+    }
+
+    .error-box.show { display: block; }
+
+    /* FOOTER */
+    .login-footer {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.7);
+    }
+
+    /* SPINNER */
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 480px) {
+      .login-card {
+        padding: 30px 22px;
+        border-radius: 16px;
+      }
+    }
+  </style>
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+</head>
+<body>
+
+  <div class="login-wrapper">
+
+    <!-- LOGO -->
+    <div class="login-logo">
+      <img src="./images/dashboard_header_img.png" alt="Logo"
+           onerror="this.style.display='none'">
+    </div>
+
+    <!-- CARD -->
+    <div class="login-card">
+      <h2>Welcome Back 👋</h2>
+      <p>Sign in to access your dashboard</p>
+
+      <!-- ERROR -->
+      <div class="error-box" id="errorBox"></div>
+
+      <!-- FORM -->
+      <div class="form-group">
+        <label>Email Address</label>
+        <div class="input-wrap">
+          <i class="bi bi-envelope-fill"></i>
+          <input
+            type="email"
+            id="loginEmail"
+            placeholder="you@example.com"
+            autocomplete="email"
+            required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Password</label>
+        <div class="input-wrap">
+          <i class="bi bi-lock-fill"></i>
+          <input
+            type="password"
+            id="loginPassword"
+            placeholder="Enter your password"
+            autocomplete="current-password"
+            required>
+          <button class="toggle-pw" type="button" onclick="togglePassword()" id="toggleBtn">
+            <i class="bi bi-eye-fill" id="toggleIcon"></i>
+          </button>
+        </div>
+      </div>
+
+      <button class="login-btn" id="loginBtn" onclick="doLogin()">
+        <div class="spinner" id="spinner"></div>
+        <span id="loginBtnText">Sign In</span>
+        <i class="bi bi-arrow-right-circle-fill" id="loginArrow"></i>
+      </button>
+    </div>
+
+    <div class="login-footer">
+      &copy; 2026 Customer Form App. All rights reserved.
+    </div>
+
+  </div>
+
+  <script>
+    // Allow Enter key to submit
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") doLogin();
+    });
+
+    // Toggle password visibility
+    function togglePassword() {
+      const input = document.getElementById("loginPassword");
+      const icon  = document.getElementById("toggleIcon");
+      if (input.type === "password") {
+        input.type = "text";
+        icon.className = "bi bi-eye-slash-fill";
+      } else {
+        input.type = "password";
+        icon.className = "bi bi-eye-fill";
+      }
+    }
+
+    // Show error
+    function showError(msg) {
+      const box = document.getElementById("errorBox");
+      box.textContent = "❌ " + msg;
+      box.classList.add("show");
+    }
+
+    // Hide error
+    function hideError() {
+      document.getElementById("errorBox").classList.remove("show");
+    }
+
+    // Login
+    async function doLogin() {
+      hideError();
+
+      const email    = document.getElementById("loginEmail").value.trim();
+      const password = document.getElementById("loginPassword").value.trim();
+
+      if (!email || !password) {
+        showError("Please enter email and password");
+        return;
+      }
+
+      // Show loading
+      const btn      = document.getElementById("loginBtn");
+      const spinner  = document.getElementById("spinner");
+      const btnText  = document.getElementById("loginBtnText");
+      const arrow    = document.getElementById("loginArrow");
+
+      btn.disabled        = true;
+      spinner.style.display  = "block";
+      btnText.textContent = "Signing in...";
+      arrow.style.display = "none";
+
+      try {
+        const res  = await fetch("/auth/login", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          showError(data.error || "Login failed");
+          return;
+        }
+
+        // Success — redirect based on role
+        if (data.role === "superadmin") {
+          window.location.href = "/dashboard.html";
+        } else {
+          window.location.href = "/dashboard.html";
+        }
+
+      } catch (err) {
+        showError("Server error. Please try again.");
+      } finally {
+        btn.disabled           = false;
+        spinner.style.display  = "none";
+        btnText.textContent    = "Sign In";
+        arrow.style.display    = "inline";
+      }
+    }
+  </script>
+
+</body>
+</html>

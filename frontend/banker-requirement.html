@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Banker Requirement</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      position: relative;
+      width: 100%;
+      min-height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 18px 32px;
+      background: #329A9A;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      overflow: hidden;
+      z-index: 100;
+    }
+    .header h1 {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+      width: max-content;
+    }
+    .header h1 img {
+      width: 520px;
+      max-width: 100%;
+      height: auto;
+      object-fit: contain;
+      filter: drop-shadow(0 6px 18px rgba(0,0,0,0.18));
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: relative;
+      z-index: 5;
+    }
+    .btn-back {
+      background: rgba(255,255,255,0.18);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.35);
+      padding: 9px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-back:hover { background: rgba(255,255,255,0.3); }
+
+    /* ── PAGE LAYOUT ── */
+    .page-wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 24px 60px;
+    }
+
+    /* ── PAGE TITLE ROW ── */
+    .page-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .page-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .page-title-icon {
+      width: 46px;
+      height: 46px;
+      border-radius: 12px;
+      background: #1456a0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+    .page-title h2 {
+      font-size: 22px;
+      font-weight: 800;
+      color: #0a2a55;
+      line-height: 1.1;
+    }
+    .page-title p {
+      font-size: 13px;
+      color: #888;
+      margin-top: 2px;
+    }
+    .btn-new-customer {
+      background: #1456a0;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .btn-new-customer:hover {
+      background: #0d3d7a;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(20,86,160,0.3);
+    }
+
+    /* ── STATS BAR ── */
+    .stats-bar {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px 24px;
+      display: flex;
+      gap: 32px;
+      margin-bottom: 24px;
+      border: 1px solid rgba(10,42,85,0.06);
+      box-shadow: 0 2px 8px rgba(10,42,85,0.04);
+      flex-wrap: wrap;
+    }
+    .stat { display: flex; flex-direction: column; }
+    .stat-label { font-size: 11px; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { font-size: 22px; font-weight: 700; color: #0a2a55; }
+
+    /* ── SEARCH ROW ── */
+    .toolbar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .search-box {
+      flex: 1;
+      min-width: 200px;
+      padding: 10px 16px;
+      border: 1.5px solid #d4dfe8;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      background: #fff;
+    }
+    .search-box:focus { border-color: #1456a0; }
+
+    /* ── GRID ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+      gap: 20px;
+    }
+
+    /* ── CARD ── */
+    .br-card {
+      background: linear-gradient(145deg, #ffffff, #f8fbff);
+      border-radius: 14px;
+      padding: 18px;
+      border: 1px solid rgba(10,42,85,0.06);
+      box-shadow: 0 3px 10px rgba(10,42,85,0.04);
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+    .br-card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 4px;
+      background: linear-gradient(90deg, #1456a0, #0a2a55);
+    }
+    .br-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 16px 40px rgba(10,42,85,0.12);
+    }
+    .br-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .br-customer-id {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #1456a0;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 12px;
+      border-radius: 50px;
+      letter-spacing: 0.5px;
+    }
+    .br-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+    .badge-submitted { background: #effff5; color: #14824d; border: 1px solid #bce8ce; }
+    .badge-draft     { background: #fff8eb; color: #b85c00; border: 1px solid #ffd8a8; }
+
+    .br-info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .br-info-item {
+      background: rgba(247,250,255,0.95);
+      border: 1px solid rgba(10,42,85,0.04);
+      border-radius: 8px;
+      padding: 8px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .br-info-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .br-info-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: #0a2a55;
+    }
+
+    /* docs chip row */
+    .br-docs-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .doc-chip {
+      background: #e6edf8;
+      color: #1456a0;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .doc-chip i { font-size: 10px; }
+
+    .br-description {
+      background: rgba(247,250,255,0.95);
+      border: 1px solid rgba(10,42,85,0.04);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 12px;
+      color: #556274;
+      line-height: 1.5;
+    }
+    .br-date {
+      font-size: 11px;
+      color: #8d99ab;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* ── CARD ACTIONS ── */
+    .br-card-actions {
+      display: flex;
+      gap: 6px;
+      padding-top: 10px;
+      border-top: 1px solid #edf1f5;
+      margin-top: auto;
+      flex-wrap: wrap;
+    }
+    
+    .act-btn {
+      flex: 1;
+      min-width: 0;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      border-radius: 8px;
+      border: 1px solid #dfe5ec;
+      background: #ffffff;
+      color: #243447;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .act-btn i { font-size: 13px; }
+    .act-btn:hover {
+      background: #0a2a55;
+      color: #fff;
+      border-color: #0a2a55;
+      transform: translateY(-1px);
+    }
+    .act-btn.btn-zip:hover    { background: #1a7a40; border-color: #1a7a40; }
+    .act-btn.btn-send:hover   { background: #25D366; border-color: #25D366; }
+    .act-btn.btn-del:hover    { background: #c0392b; border-color: #c0392b; }
+
+    /* ── EMPTY / LOADING ── */
+    .empty-state {
+      grid-column: 1/-1;
+      text-align: center;
+      padding: 80px 20px;
+      color: #aaa;
+    }
+    .empty-state h3 { font-size: 18px; color: #888; margin-bottom: 8px; }
+    .empty-state p  { font-size: 14px; }
+
+    /* ══ MODALS ══ */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-box {
+      background: #fff;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 580px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+      animation: modalIn 0.3s cubic-bezier(0.22,1,0.36,1);
+    }
+    @keyframes modalIn {
+      from { transform: translateY(40px) scale(0.97); opacity: 0; }
+      to   { transform: translateY(0) scale(1);       opacity: 1; }
+    }
+    .modal-head {
+      background: linear-gradient(135deg, #0a2a55, #1456a0);
+      color: #fff;
+      padding: 18px 24px;
+      border-radius: 16px 16px 0 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-head h3 { font-size: 16px; font-weight: 700; }
+    .modal-close {
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: #fff;
+      width: 30px; height: 30px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+    .modal-close:hover { background: rgba(255,255,255,0.3); }
+    .modal-body { padding: 24px; }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-group label { font-size: 12px; font-weight: 700; color: #0a2a55; }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 10px 13px;
+      border-radius: 8px;
+      border: 1.5px solid #dbe4ee;
+      font-size: 13px;
+      color: #1a1a2e;
+      outline: none;
+      background: #fff;
+      transition: all 0.2s;
+    }
+    .form-group textarea { min-height: 80px; resize: vertical; }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      border-color: #1456a0;
+      box-shadow: 0 0 0 3px rgba(20,86,160,0.1);
+    }
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid #eee;
+      display: flex;
+      gap: 10px;
+    }
+    .modal-footer button {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-save {
+      background: linear-gradient(135deg, #1456a0, #0a2a55);
+      color: #fff;
+    }
+    .btn-save:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(20,86,160,0.3); }
+    .btn-cancel-modal { background: #e8edf3; color: #243447; }
+    .btn-cancel-modal:hover { background: #d8e0ea; }
+
+    /* view detail rows */
+    .detail-section { margin-bottom: 18px; }
+    .detail-section-title {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.8px; color: #888; margin-bottom: 10px;
+      padding-bottom: 6px; border-bottom: 1px solid #eee;
+    }
+    .detail-row {
+      display: flex; padding: 7px 0;
+      font-size: 13px; border-bottom: 1px solid #f5f5f5;
+    }
+    .detail-label { font-weight: 600; color: #666; min-width: 160px; flex-shrink: 0; }
+    .detail-value { color: #1a1a2e; word-break: break-word; }
+    .badge-yes { background:#e8f8ef;color:#1a7a40;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700; }
+    .badge-no  { background:#fdeaea;color:#c0392b;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700; }
+
+    /* ══ WHATSAPP MODAL ══ */
+    .wa-modal-box {
+      background: #fff;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+      animation: modalIn 0.3s cubic-bezier(0.22,1,0.36,1);
+      overflow: hidden;
+    }
+    .wa-body { padding: 22px 24px; }
+    .wa-label { font-size: 13px; font-weight: 700; color: #0a2a55; margin-bottom: 8px; display: block; }
+    .wa-input-wrap { position: relative; }
+    .wa-input-wrap i {
+      position: absolute; left: 13px; top: 50%;
+      transform: translateY(-50%); color: #aab4c0; font-size: 16px;
+    }
+    .wa-phone-input {
+      width: 100%; padding: 12px 14px 12px 40px;
+      border: 1.5px solid #dbe4ee; border-radius: 10px;
+      font-size: 14px; color: #1a1a2e; outline: none; transition: all 0.2s;
+    }
+    .wa-phone-input:focus { border-color: #1456a0; box-shadow: 0 0 0 3px rgba(20,86,160,0.1); }
+    .wa-phone-input.error { border-color: #c0392b; }
+    .wa-error-msg { font-size: 12px; color: #c0392b; margin-top: 6px; display: none; }
+    .wa-error-msg.show { display: block; }
+    .wa-hint { font-size: 11px; color: #888; margin-top: 6px; }
+    .wa-actions { display: flex; gap: 8px; margin-top: 16px; }
+    .wa-btn-whatsapp {
+      flex: 1; padding: 11px; background: #25D366; color: #fff;
+      border: none; border-radius: 8px; font-size: 13px; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center;
+      justify-content: center; gap: 7px; transition: all 0.2s;
+    }
+    .wa-btn-whatsapp:hover { background: #1ebe5d; transform: translateY(-1px); }
+    .wa-btn-sms {
+      flex: 1; padding: 11px; background: #e8edf3; color: #0a2a55;
+      border: none; border-radius: 8px; font-size: 13px; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center;
+      justify-content: center; gap: 7px; transition: all 0.2s;
+    }
+    .wa-btn-sms:hover { background: #d4dfe8; }
+    .wa-copy-section { margin-top: 14px; padding-top: 14px; border-top: 1px solid #eee; }
+    .wa-copy-label { font-size: 11px; color: #888; margin-bottom: 6px; }
+    .wa-copy-row { display: flex; gap: 8px; }
+    .wa-copy-row input {
+      flex: 1; padding: 8px 12px; border: 1px solid #dbe4ee;
+      border-radius: 6px; font-size: 12px; color: #556274;
+      background: #f8fafc; outline: none;
+    }
+    .wa-copy-btn {
+      padding: 8px 14px; background: #e8edf3; color: #0a2a55;
+      border: none; border-radius: 6px; font-size: 12px; font-weight: 700;
+      cursor: pointer; transition: background 0.2s; white-space: nowrap;
+    }
+    .wa-copy-btn:hover { background: #d4dfe8; }
+    .wa-copy-btn.copied { background: #1a7a40; color: #fff; }
+
+    /* ── DELETE CONFIRM ── */
+    .confirm-box {
+      background: #fff; border-radius: 14px; padding: 28px;
+      max-width: 360px; width: 90%; text-align: center;
+      box-shadow: 0 15px 50px rgba(0,0,0,0.25);
+      animation: modalIn 0.3s cubic-bezier(0.22,1,0.36,1);
+    }
+    .confirm-box .del-icon { font-size: 38px; margin-bottom: 12px; }
+    .confirm-box h3 { color: #0a2a55; font-size: 17px; margin-bottom: 8px; }
+    .confirm-box p  { color: #666; font-size: 13px; margin-bottom: 22px; line-height: 1.5; }
+    .confirm-actions { display: flex; gap: 10px; }
+    .confirm-actions button {
+      flex: 1; padding: 11px; border: none; border-radius: 8px;
+      font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-cancel-del { background: #e0e0e0; color: #333; }
+    .btn-cancel-del:hover { background: #ccc; }
+    .btn-del-confirm { background: #c0392b; color: #fff; }
+    .btn-del-confirm:hover { background: #a93226; }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed; bottom: 28px; right: 28px;
+      background: #0a2a55; color: #fff;
+      padding: 13px 20px; border-radius: 10px;
+      font-size: 13px; font-weight: 600;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+      z-index: 9999; opacity: 0; transform: translateY(16px);
+      transition: all 0.3s; pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.toast-success { background: #1a7a40; }
+    .toast.toast-error   { background: #c0392b; }
+
+    @media (max-width: 600px) {
+      .page-wrap { padding: 16px 14px 40px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .br-info-grid { grid-template-columns: 1fr; }
+      .wa-actions { flex-direction: column; }
+      .br-card-actions { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<div class="header">
+  <h1><img src="./images/dashboard_header_img.png" alt="Dashboard"></h1>
+  <div class="header-right">
+    <a href="/dashboard" class="btn-back"><i class="bi bi-arrow-left"></i> Dashboard</a>
+  </div>
+</div>
+
+<!-- ── PAGE WRAP ── -->
+<div class="page-wrap">
+
+  <!-- TITLE ROW -->
+  <div class="page-title-row">
+    <div class="page-title">
+      <div class="page-title-icon"><i class="bi bi-bank2"></i></div>
+      <div>
+        <h2>Banker Requirement</h2>
+        <p>Manage banker requirement cards — download ZIP with all documents</p>
+      </div>
+    </div>
+    <button class="btn-new-customer" onclick="openNewCustomerModal()">
+      <i class="bi bi-plus-lg"></i> New Customer
+    </button>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-bar">
+    <div class="stat">
+      <span class="stat-label">Total</span>
+      <span class="stat-value" id="statTotal">—</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">This Month</span>
+      <span class="stat-value" id="statMonth">—</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">With Documents</span>
+      <span class="stat-value" id="statDocs">—</span>
+    </div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+    <input class="search-box" type="text" id="searchInput"
+      placeholder="Search by customer ID, employment type, loan amount...">
+  </div>
+
+  <!-- GRID -->
+  <div class="grid" id="brGrid">
+    <div class="empty-state" style="padding:40px 20px;">
+      <div style="font-size:40px;margin-bottom:12px;">⏳</div>
+      <h3>Loading...</h3>
+    </div>
+  </div>
+</div>
+
+<!-- ══ NEW CUSTOMER MODAL ══ -->
+<div class="modal-overlay" id="newCustomerModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3><i class="bi bi-plus-circle" style="margin-right:7px;"></i>Add Customer — Banker Requirement</h3>
+      <button class="modal-close" onclick="closeNewCustomerModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:#888;margin-bottom:18px;background:#f0f4f8;padding:10px 14px;border-radius:8px;">
+        <i class="bi bi-info-circle" style="margin-right:5px;color:#1456a0;"></i>
+        Quick-add for banker requirements. Full customer details are in the main dashboard.
+        The ZIP download will include the requirement PDF + payslips + bank statements from the customer record.
+      </p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Customer ID (optional)</label>
+          <input type="text" id="nc_customerId" placeholder="Auto-generated if blank">
+        </div>
+        <div class="form-group">
+          <label>Employment Type *</label>
+          <select id="nc_employmentType" required>
+            <option value="">Select</option>
+            <option value="salaried">Salaried</option>
+            <option value="selfEmployed">Self Employed</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Loan Amount Required *</label>
+          <input type="text" id="nc_loanAmount" placeholder="e.g. ₹ 25,00,000" required>
+        </div>
+        <div class="form-group">
+          <label>Loan Type *</label>
+          <select id="nc_loanType" required>
+            <option value="">Select</option>
+            <option value="fresh-pl">Fresh Personal Loan</option>
+            <option value="fresh-bl">Fresh Business Loan</option>
+            <option value="fresh-hl">Fresh Home Loan</option>
+            <option value="fresh-lap">Fresh LAP</option>
+            <option value="fresh-ppl">Fresh Plot Purchase</option>
+            <option value="fresh-p+c">Fresh Plot + Construction</option>
+            <option value="renewal">Renewal</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>CIBIL Score</label>
+          <input type="text" id="nc_cibil" placeholder="e.g. 750">
+        </div>
+        <div class="form-group">
+          <label>Monthly Income</label>
+          <input type="text" id="nc_income" placeholder="e.g. ₹ 80,000">
+        </div>
+        <div class="form-group">
+          <label>Bank Name (preferred)</label>
+          <input type="text" id="nc_bank" placeholder="e.g. SBI, HDFC">
+        </div>
+        <div class="form-group">
+          <label>Payslips Available</label>
+          <select id="nc_payslips">
+            <option value="3">3 Months</option>
+            <option value="6">6 Months</option>
+            <option value="0">Not Available</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Bank Statements Available</label>
+          <select id="nc_bankStmt">
+            <option value="6">6 Months</option>
+            <option value="12">12 Months</option>
+            <option value="0">Not Available</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Additional Notes</label>
+          <textarea id="nc_notes" placeholder="Any specific banker requirements, preferred banks, or notes..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel-modal" onclick="closeNewCustomerModal()">Cancel</button>
+      <button class="btn-save" onclick="saveNewCustomer()">
+        <i class="bi bi-check-circle" style="margin-right:5px;"></i>Save Customer
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ VIEW MODAL ══ -->
+<div class="modal-overlay" id="viewModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 id="viewModalTitle">Banker Requirement Details</h3>
+      <button class="modal-close" onclick="closeModal('viewModal')">✕</button>
+    </div>
+    <div class="modal-body" id="viewModalBody"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel-modal" onclick="closeModal('viewModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ EDIT MODAL ══ -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal-box" style="max-width:620px;">
+    <div class="modal-head">
+      <h3 id="editModalTitle">Edit Banker Requirement</h3>
+      <button class="modal-close" onclick="closeModal('editModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Employment Type *</label>
+          <select id="edit_employmentType">
+            <option value="">Select</option>
+            <option value="salaried">Salaried</option>
+            <option value="selfEmployed">Self Employed</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Loan Amount *</label>
+          <input type="text" id="edit_loanAmount" placeholder="e.g. ₹ 25,00,000">
+        </div>
+        <div class="form-group">
+          <label>Loan Type *</label>
+          <select id="edit_loanType">
+            <option value="">Select</option>
+            <option value="fresh-pl">Fresh Personal Loan</option>
+            <option value="fresh-bl">Fresh Business Loan</option>
+            <option value="fresh-hl">Fresh Home Loan</option>
+            <option value="fresh-lap">Fresh LAP</option>
+            <option value="fresh-ppl">Fresh Plot Purchase</option>
+            <option value="fresh-p+c">Fresh Plot + Construction</option>
+            <option value="renewal">Renewal</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>CIBIL Score</label>
+          <input type="text" id="edit_cibil" placeholder="e.g. 750">
+        </div>
+        <div class="form-group">
+          <label>Monthly Income</label>
+          <input type="text" id="edit_income" placeholder="e.g. ₹ 80,000">
+        </div>
+        <div class="form-group">
+          <label>Bank Name (preferred)</label>
+          <input type="text" id="edit_bank" placeholder="e.g. SBI, HDFC">
+        </div>
+        <div class="form-group">
+          <label>Payslips Available</label>
+          <select id="edit_payslips">
+            <option value="3">3 Months</option>
+            <option value="6">6 Months</option>
+            <option value="0">Not Available</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Bank Statements Available</label>
+          <select id="edit_bankStmt">
+            <option value="6">6 Months</option>
+            <option value="12">12 Months</option>
+            <option value="0">Not Available</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Additional Notes</label>
+          <textarea id="edit_notes" placeholder="Additional notes..."></textarea>
+        </div>
+      </div>
+    </div>
+    <input type="hidden" id="edit_recordId">
+    <div class="modal-footer">
+      <button class="btn-cancel-modal" onclick="closeModal('editModal')">Cancel</button>
+      <button class="btn-save" onclick="saveEdit()">
+        <i class="bi bi-check-circle" style="margin-right:5px;"></i>Update
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SEND PDF / WHATSAPP MODAL ══ -->
+<div class="modal-overlay" id="waModal">
+  <div class="wa-modal-box">
+    <div class="modal-head">
+      <h3><i class="fa-brands fa-whatsapp" style="margin-right:8px;color:#25D366;"></i>Send Banker PDF</h3>
+      <button class="modal-close" onclick="closeModal('waModal')">✕</button>
+    </div>
+    <div class="wa-body">
+      <div style="background:#e6edf8;border:1px solid #b5d4f4;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#1456a0;">
+        <i class="bi bi-info-circle" style="margin-right:5px;"></i>
+        Customer ID: <strong id="waCustomerId">—</strong> — PDF will NOT contain name, email or password.
+      </div>
+      <label class="wa-label">Enter WhatsApp Number</label>
+      <div class="wa-input-wrap">
+        <i class="bi bi-telephone"></i>
+        <input type="tel" class="wa-phone-input" id="waPhoneInput"
+               placeholder="+91 98765 43210"
+               oninput="onPhoneInput()">
+      </div>
+      <div class="wa-error-msg" id="waErrorMsg">Please enter a valid 10-digit mobile number</div>
+      <p class="wa-hint">Include country code e.g. +91 for India.</p>
+      <div class="wa-actions">
+        <button class="wa-btn-whatsapp" onclick="sendViaWhatsApp()">
+          <i class="fa-brands fa-whatsapp" style="font-size:16px;"></i> Open WhatsApp
+        </button>
+        <button class="wa-btn-sms" onclick="sendViaSMS()">
+          <i class="bi bi-chat-dots"></i> SMS Fallback
+        </button>
+      </div>
+      <div class="wa-copy-section">
+        <p class="wa-copy-label">No WhatsApp? Copy the PDF link and share manually:</p>
+        <div class="wa-copy-row">
+          <input type="text" id="waCopyLink" readonly>
+          <button class="wa-copy-btn" id="waCopyBtn" onclick="copyWaLink()">Copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ DELETE CONFIRM ══ -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="confirm-box">
+    <div class="del-icon">🗑️</div>
+    <h3>Delete Record?</h3>
+    <p id="deleteMsg">This will permanently remove this banker requirement record.</p>
+    <div class="confirm-actions">
+      <button class="btn-cancel-del" onclick="closeModal('deleteModal')">Cancel</button>
+      <button class="btn-del-confirm" onclick="confirmDelete()">Yes, Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST ── -->
+<div class="toast" id="toast"></div>
+
+<script>
+///////////////////////////////////////////////////////////////
+// STATE
+///////////////////////////////////////////////////////////////
+let allRecords     = [];
+let deleteTargetId = null;
+let waCurrentRecord = null;
+
+///////////////////////////////////////////////////////////////
+// LOAD
+///////////////////////////////////////////////////////////////
+async function loadRecords() {
+  try {
+    const res  = await fetch("/api/banker-requirements");
+    const data = await res.json();
+    allRecords = data.records || [];
+    updateStats(allRecords);
+    applySearch();
+  } catch (err) {
+    document.getElementById("brGrid").innerHTML =
+      `<div class="empty-state"><div style="font-size:40px">⚠️</div><h3>Could not load</h3><p>${err.message}</p></div>`;
+  }
+}
+
+function updateStats(list) {
+  document.getElementById("statTotal").textContent = list.length;
+  const now = new Date();
+  document.getElementById("statMonth").textContent = list.filter(r => {
+    const d = new Date(r.createdAt);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).length;
+  document.getElementById("statDocs").textContent = list.filter(r =>
+    (r.data?.payslips && r.data.payslips !== "0") ||
+    (r.data?.bankStmt && r.data.bankStmt !== "0")
+  ).length;
+}
+
+///////////////////////////////////////////////////////////////
+// LOAN TYPE LABELS
+///////////////////////////////////////////////////////////////
+function loanLabel(val) {
+  const map = {
+    "fresh-pl":"Fresh Personal Loan","fresh-bl":"Fresh Business Loan",
+    "fresh-hl":"Fresh Home Loan","fresh-lap":"Fresh LAP",
+    "fresh-ppl":"Fresh Plot Purchase","fresh-p+c":"Fresh Plot + Construction",
+    "renewal":"Renewal"
+  };
+  return map[val] || val || "—";
+}
+
+///////////////////////////////////////////////////////////////
+// RENDER
+///////////////////////////////////////////////////////////////
+function renderCards(list) {
+  const grid = document.getElementById("brGrid");
+  if (!list.length) {
+    grid.innerHTML = `<div class="empty-state">
+      <div style="font-size:40px;margin-bottom:12px;">🏦</div>
+      <h3>No banker requirements yet</h3>
+      <p>Click "+ New Customer" to add the first one.</p>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = list.map(r => {
+    const d    = r.data || {};
+    const date = new Date(r.createdAt).toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" });
+    const badge = r.status === "submitted"
+      ? `<span class="br-badge badge-submitted"><i class="bi bi-check-circle-fill"></i> Submitted</span>`
+      : `<span class="br-badge badge-draft"><i class="bi bi-clock-fill"></i> Draft</span>`;
+
+    const docsChips = [];
+    if (d.payslips && d.payslips !== "0") docsChips.push(`<span class="doc-chip"><i class="bi bi-file-earmark-text"></i> Payslips (${d.payslips}mo)</span>`);
+    if (d.bankStmt  && d.bankStmt  !== "0") docsChips.push(`<span class="doc-chip"><i class="bi bi-bank"></i> Bank Stmt (${d.bankStmt}mo)</span>`);
+
+    return `
+    <div class="br-card" id="brc-${r._id}">
+      <div class="br-card-top">
+        <span class="br-customer-id"><i class="bi bi-person-badge"></i> ${r.customerId}</span>
+        ${badge}
+      </div>
+      <div class="br-info-grid">
+        <div class="br-info-item">
+          <span class="br-info-label">Employment</span>
+          <span class="br-info-value">${d.employmentType === "salaried" ? "Salaried" : d.employmentType === "selfEmployed" ? "Self Employed" : "—"}</span>
+        </div>
+        <div class="br-info-item">
+          <span class="br-info-label">Loan Amount</span>
+          <span class="br-info-value">${d.loanAmount || "—"}</span>
+        </div>
+        <div class="br-info-item">
+          <span class="br-info-label">Loan Type</span>
+          <span class="br-info-value">${loanLabel(d.loanType)}</span>
+        </div>
+        <div class="br-info-item">
+          <span class="br-info-label">CIBIL</span>
+          <span class="br-info-value">${d.cibil || "—"}</span>
+        </div>
+        <div class="br-info-item">
+          <span class="br-info-label">Income</span>
+          <span class="br-info-value">${d.income || "—"}</span>
+        </div>
+        <div class="br-info-item">
+          <span class="br-info-label">Preferred Bank</span>
+          <span class="br-info-value">${d.bank || "—"}</span>
+        </div>
+      </div>
+      ${docsChips.length ? `<div class="br-docs-row">${docsChips.join("")}</div>` : ""}
+      ${d.notes ? `<div class="br-description"><i class="bi bi-chat-text" style="color:#1456a0;margin-right:5px;"></i>${d.notes}</div>` : ""}
+      <div class="br-date"><i class="bi bi-clock-history"></i> Added: ${date}</div>
+      <div class="br-card-actions">
+        <button class="act-btn" onclick="viewRecord('${r._id}')">
+          <i class="bi bi-eye-fill"></i> View
+        </button>
+        <button class="act-btn" onclick="openEdit('${r._id}')">
+          <i class="fa-solid fa-pen-to-square"></i> Update
+        </button>
+        <button class="act-btn btn-send" onclick="openWaModal('${r._id}')">
+          <i class="fa-brands fa-whatsapp"></i> Send PDF
+        </button>
+        <a class="act-btn btn-zip" href="/api/banker-requirements/${r._id}/zip" download>
+          <i class="bi bi-file-zip"></i> ZIP
+        </a>
+        <button class="act-btn btn-del" onclick="askDelete('${r._id}','${r.customerId}')">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+///////////////////////////////////////////////////////////////
+// SEARCH
+///////////////////////////////////////////////////////////////
+function applySearch() {
+  const q = document.getElementById("searchInput").value.toLowerCase().trim();
+  const result = allRecords.filter(r => {
+    const d = r.data || {};
+    return !q ||
+      r.customerId.toLowerCase().includes(q) ||
+      (d.employmentType || "").toLowerCase().includes(q) ||
+      (d.loanAmount || "").toLowerCase().includes(q) ||
+      (d.loanType || "").toLowerCase().includes(q) ||
+      (d.bank || "").toLowerCase().includes(q);
+  });
+  renderCards(result);
+}
+document.getElementById("searchInput").addEventListener("input", applySearch);
+
+///////////////////////////////////////////////////////////////
+// NEW CUSTOMER MODAL
+///////////////////////////////////////////////////////////////
+function openNewCustomerModal() {
+  ["nc_customerId","nc_loanAmount","nc_cibil","nc_income","nc_bank","nc_notes"]
+    .forEach(id => { document.getElementById(id).value = ""; });
+  document.getElementById("nc_employmentType").value = "";
+  document.getElementById("nc_loanType").value       = "";
+  document.getElementById("nc_payslips").value       = "3";
+  document.getElementById("nc_bankStmt").value       = "6";
+  document.getElementById("newCustomerModal").classList.add("show");
+}
+function closeNewCustomerModal() {
+  document.getElementById("newCustomerModal").classList.remove("show");
+}
+
+async function saveNewCustomer() {
+  const employmentType = document.getElementById("nc_employmentType").value.trim();
+  const loanAmount     = document.getElementById("nc_loanAmount").value.trim();
+  const loanType       = document.getElementById("nc_loanType").value.trim();
+  if (!employmentType || !loanAmount || !loanType) {
+    showToast("Please fill Employment Type, Loan Amount and Loan Type", "error");
+    return;
+  }
+  const payload = {
+    customerId:     document.getElementById("nc_customerId").value.trim() || null,
+    employmentType, loanAmount, loanType,
+    cibil:    document.getElementById("nc_cibil").value.trim(),
+    income:   document.getElementById("nc_income").value.trim(),
+    bank:     document.getElementById("nc_bank").value.trim(),
+    payslips: document.getElementById("nc_payslips").value,
+    bankStmt: document.getElementById("nc_bankStmt").value,
+    notes:    document.getElementById("nc_notes").value.trim()
+  };
+  try {
+    const res  = await fetch("/api/banker-requirements", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Save failed");
+    closeNewCustomerModal();
+    showToast("✅ Banker requirement saved!", "success");
+    loadRecords();
+  } catch (err) {
+    showToast("❌ " + err.message, "error");
+  }
+}
+
+///////////////////////////////////////////////////////////////
+// VIEW
+///////////////////////////////////////////////////////////////
+function viewRecord(id) {
+  const r = allRecords.find(x => x._id === id);
+  if (!r) return;
+  const d = r.data || {};
+  document.getElementById("viewModalTitle").textContent = `Banker Req — ${r.customerId}`;
+  document.getElementById("viewModalBody").innerHTML = `
+    <div class="detail-section">
+      <div class="detail-section-title">Banker Requirement Details</div>
+      ${row("Customer ID",   r.customerId)}
+      ${row("Employment",    d.employmentType === "salaried" ? "Salaried" : d.employmentType === "selfEmployed" ? "Self Employed" : d.employmentType)}
+      ${row("Loan Amount",   d.loanAmount)}
+      ${row("Loan Type",     loanLabel(d.loanType))}
+      ${row("CIBIL Score",   d.cibil)}
+      ${row("Monthly Income",d.income)}
+      ${row("Preferred Bank",d.bank)}
+      ${row("Payslips",      d.payslips && d.payslips !== "0" ? d.payslips + " months" : "Not available")}
+      ${row("Bank Statements",d.bankStmt && d.bankStmt !== "0" ? d.bankStmt + " months" : "Not available")}
+      ${row("Status",        r.status)}
+    </div>
+    ${d.notes ? `<div class="detail-section">
+      <div class="detail-section-title">Notes</div>
+      <p style="font-size:13px;color:#556274;line-height:1.6;">${d.notes}</p>
+    </div>` : ""}
+    <div class="detail-section">
+      <div class="detail-section-title">Download</div>
+      <p style="font-size:12px;color:#888;margin-bottom:10px;">The ZIP file contains the requirement PDF + payslips + bank statements from the customer record.</p>
+      <a href="/api/banker-requirements/${id}/zip" download
+         style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;
+                background:linear-gradient(135deg,#0a2a55,#1456a0);color:#fff;
+                border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;">
+        <i class="bi bi-file-zip"></i> Download ZIP
+      </a>
+    </div>`;
+  document.getElementById("viewModal").classList.add("show");
+}
+function row(label, val) {
+  if (!val) return "";
+  return `<div class="detail-row"><span class="detail-label">${label}</span><span class="detail-value">${val}</span></div>`;
+}
+
+///////////////////////////////////////////////////////////////
+// EDIT
+///////////////////////////////////////////////////////////////
+function openEdit(id) {
+  const r = allRecords.find(x => x._id === id);
+  if (!r) return;
+  const d = r.data || {};
+  document.getElementById("edit_recordId").value        = id;
+  document.getElementById("editModalTitle").textContent = `Edit — ${r.customerId}`;
+  document.getElementById("edit_employmentType").value  = d.employmentType || "";
+  document.getElementById("edit_loanAmount").value      = d.loanAmount || "";
+  document.getElementById("edit_loanType").value        = d.loanType || "";
+  document.getElementById("edit_cibil").value           = d.cibil || "";
+  document.getElementById("edit_income").value          = d.income || "";
+  document.getElementById("edit_bank").value            = d.bank || "";
+  document.getElementById("edit_payslips").value        = d.payslips || "3";
+  document.getElementById("edit_bankStmt").value        = d.bankStmt || "6";
+  document.getElementById("edit_notes").value           = d.notes || "";
+  document.getElementById("editModal").classList.add("show");
+}
+
+async function saveEdit() {
+  const id = document.getElementById("edit_recordId").value;
+  const payload = {
+    employmentType: document.getElementById("edit_employmentType").value.trim(),
+    loanAmount:     document.getElementById("edit_loanAmount").value.trim(),
+    loanType:       document.getElementById("edit_loanType").value.trim(),
+    cibil:          document.getElementById("edit_cibil").value.trim(),
+    income:         document.getElementById("edit_income").value.trim(),
+    bank:           document.getElementById("edit_bank").value.trim(),
+    payslips:       document.getElementById("edit_payslips").value,
+    bankStmt:       document.getElementById("edit_bankStmt").value,
+    notes:          document.getElementById("edit_notes").value.trim()
+  };
+  if (!payload.employmentType || !payload.loanAmount || !payload.loanType) {
+    showToast("Employment Type, Loan Amount and Loan Type are required", "error");
+    return;
+  }
+  try {
+    const res  = await fetch(`/api/banker-requirements/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Update failed");
+    closeModal("editModal");
+    showToast("✅ Updated successfully!", "success");
+    loadRecords();
+  } catch (err) {
+    showToast("❌ " + err.message, "error");
+  }
+}
+
+///////////////////////////////////////////////////////////////
+// WHATSAPP / SEND PDF
+///////////////////////////////////////////////////////////////
+function openWaModal(id) {
+  waCurrentRecord = allRecords.find(x => x._id === id);
+  if (!waCurrentRecord) return;
+  document.getElementById("waCustomerId").textContent = waCurrentRecord.customerId;
+  document.getElementById("waPhoneInput").value = "";
+  document.getElementById("waPhoneInput").classList.remove("error");
+  document.getElementById("waErrorMsg").classList.remove("show");
+  const pdfUrl = `${location.origin}/api/banker-requirements/${id}/pdf`;
+  document.getElementById("waCopyLink").value = pdfUrl;
+  document.getElementById("waCopyBtn").textContent = "Copy";
+  document.getElementById("waCopyBtn").classList.remove("copied");
+  document.getElementById("waModal").classList.add("show");
+}
+
+function onPhoneInput() {
+  document.getElementById("waPhoneInput").classList.remove("error");
+  document.getElementById("waErrorMsg").classList.remove("show");
+}
+
+function getCleanPhone() {
+  let raw = document.getElementById("waPhoneInput").value.trim();
+  raw = raw.replace(/[\s\-\(\)]/g, "");
+  if (raw.startsWith("+")) raw = raw.slice(1);
+  if (/^\d{10}$/.test(raw)) return "91" + raw;
+  if (/^91\d{10}$/.test(raw)) return raw;
+  if (/^\d{11,14}$/.test(raw)) return raw;
+  return null;
+}
+
+function sendViaWhatsApp() {
+  const phone = getCleanPhone();
+  if (!phone) {
+    document.getElementById("waPhoneInput").classList.add("error");
+    document.getElementById("waErrorMsg").classList.add("show");
+    return;
+  }
+  if (!waCurrentRecord) return;
+  const d   = waCurrentRecord.data || {};
+  const msg = encodeURIComponent(
+    `Hello, please find your banker requirement details below:\n\n` +
+    `Loan Type: ${loanLabel(d.loanType)}\n` +
+    `Loan Amount: ${d.loanAmount || "—"}\n` +
+    `Employment: ${d.employmentType === "salaried" ? "Salaried" : "Self Employed"}\n` +
+    `CIBIL: ${d.cibil || "—"}\n\n` +
+    `Requirement PDF: ${location.origin}/api/banker-requirements/${waCurrentRecord._id}/pdf`
+  );
+  window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
+  closeModal("waModal");
+  showToast("✅ Opening WhatsApp...", "success");
+}
+
+function sendViaSMS() {
+  const phone = getCleanPhone();
+  if (!phone) {
+    document.getElementById("waPhoneInput").classList.add("error");
+    document.getElementById("waErrorMsg").classList.add("show");
+    return;
+  }
+  const pdfUrl = `${location.origin}/api/banker-requirements/${waCurrentRecord._id}/pdf`;
+  const msg    = encodeURIComponent(`Banker Requirement PDF: ${pdfUrl}`);
+  window.open(`sms:+${phone}?body=${msg}`, "_blank");
+  closeModal("waModal");
+  showToast("✅ Opening SMS...", "success");
+}
+
+function copyWaLink() {
+  const link = document.getElementById("waCopyLink").value;
+  navigator.clipboard.writeText(link).then(() => {
+    const btn = document.getElementById("waCopyBtn");
+    btn.textContent = "Copied!";
+    btn.classList.add("copied");
+    showToast("✅ Link copied!", "success");
+  }).catch(() => {
+    const ta = document.createElement("textarea");
+    ta.value = link; document.body.appendChild(ta); ta.select();
+    document.execCommand("copy"); document.body.removeChild(ta);
+    const btn = document.getElementById("waCopyBtn");
+    btn.textContent = "Copied!"; btn.classList.add("copied");
+  });
+}
+
+///////////////////////////////////////////////////////////////
+// DELETE
+///////////////////////////////////////////////////////////////
+function askDelete(id, customerId) {
+  deleteTargetId = id;
+  document.getElementById("deleteMsg").textContent =
+    `This will permanently remove the banker requirement for ${customerId}. This cannot be undone.`;
+  document.getElementById("deleteModal").classList.add("show");
+}
+
+async function confirmDelete() {
+  if (!deleteTargetId) return;
+  try {
+    const res = await fetch(`/api/banker-requirements/${deleteTargetId}`, { method: "DELETE" });
+    if (res.ok) {
+      document.getElementById(`brc-${deleteTargetId}`)?.remove();
+      allRecords = allRecords.filter(r => r._id !== deleteTargetId);
+      updateStats(allRecords);
+      showToast("✅ Deleted", "success");
+    } else {
+      showToast("❌ Delete failed", "error");
+    }
+  } catch { showToast("❌ Server error", "error"); }
+  closeModal("deleteModal");
+  deleteTargetId = null;
+}
+
+///////////////////////////////////////////////////////////////
+// HELPERS
+///////////////////////////////////////////////////////////////
+function closeModal(id) {
+  document.getElementById(id).classList.remove("show");
+}
+
+function showToast(msg, type = "") {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className   = "toast show" + (type ? ` toast-${type}` : "");
+  setTimeout(() => { t.className = "toast"; }, 3000);
+}
+
+///////////////////////////////////////////////////////////////
+// INIT
+///////////////////////////////////////////////////////////////
+loadRecords();
+setInterval(() => loadRecords(), 30000);
+</script>
+</body>
+</html>

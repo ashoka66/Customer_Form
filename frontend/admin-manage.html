@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Management — Superadmin</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      position: relative;
+      width: 100%;
+      min-height: 150px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 22px 32px;
+      background: #329A9A;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      overflow: hidden;
+      z-index: 100;
+    }
+    .header h1 {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+      width: max-content;
+    }
+    .header h1 img {
+      width: 620px;
+      max-width: 100%;
+      height: auto;
+      object-fit: contain;
+      filter: drop-shadow(0 6px 18px rgba(0,0,0,0.18));
+      transition: all 0.3s ease;
+    }
+    .header h1 img:hover { transform: scale(1.03); }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-left: auto;
+      position: relative;
+      z-index: 5;
+    }
+    .btn-back {
+      background: rgba(255,255,255,0.18);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.35);
+      padding: 9px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-back:hover { background: rgba(255,255,255,0.3); }
+
+    /* ── STATS BAR ── */
+    .stats-bar {
+      background: white;
+      padding: 14px 30px;
+      display: flex;
+      gap: 30px;
+      border-bottom: 1px solid #e3e8f0;
+      flex-wrap: wrap;
+    }
+    .stat { display: flex; flex-direction: column; }
+    .stat-label { font-size: 11px; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { font-size: 22px; font-weight: 700; color: #0a2a55; }
+
+    /* ── PAGE WRAP ── */
+    .page-wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 24px 60px;
+    }
+
+    /* ── PAGE TITLE ROW ── */
+    .page-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .page-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .page-title-icon {
+      width: 46px;
+      height: 46px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #0a2a55, #1456a0);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+    .page-title h2 { font-size: 22px; font-weight: 800; color: #0a2a55; line-height: 1.1; }
+    .page-title p  { font-size: 13px; color: #888; margin-top: 2px; }
+    .btn-new-admin {
+      background: linear-gradient(135deg, #0a2a55, #1456a0);
+      color: #fff;
+      border: none;
+      padding: 11px 22px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      transition: all 0.2s;
+    }
+    .btn-new-admin:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(10,42,85,0.25);
+    }
+
+    /* ── TOOLBAR ── */
+    .toolbar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .search-box {
+      flex: 1;
+      min-width: 200px;
+      padding: 10px 16px;
+      border: 1.5px solid #d4dfe8;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      background: #fff;
+    }
+    .search-box:focus { border-color: #0a2a55; }
+
+    /* ── ADMIN GRID ── */
+    .admin-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+    }
+
+    /* ── ADMIN CARD ── */
+    .admin-card {
+      background: linear-gradient(145deg, #ffffff, #f8fbff);
+      border-radius: 14px;
+      padding: 20px;
+      border: 1px solid rgba(10,42,85,0.06);
+      box-shadow: 0 3px 10px rgba(10,42,85,0.04);
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+    .admin-card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 4px;
+      background: linear-gradient(90deg, #0a2a55, #1456a0);
+    }
+    .admin-card.inactive::before {
+      background: linear-gradient(90deg, #aaa, #ccc);
+    }
+    .admin-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 16px 40px rgba(10,42,85,0.12);
+    }
+
+    /* CARD TOP ROW */
+    .admin-card-top {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+    }
+    .admin-avatar {
+      width: 46px;
+      height: 46px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #0a2a55, #1456a0);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 20px;
+      font-weight: 800;
+      flex-shrink: 0;
+      letter-spacing: -1px;
+    }
+    .admin-card.inactive .admin-avatar {
+      background: linear-gradient(135deg, #999, #bbb);
+    }
+    .admin-meta { flex: 1; min-width: 0; }
+    .admin-name {
+      font-size: 15px;
+      font-weight: 800;
+      color: #0a2a55;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .admin-email {
+      font-size: 12px;
+      color: #8d99ab;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .status-active   { background: #effff5; color: #14824d; border: 1px solid #bce8ce; }
+    .status-inactive { background: #f5f5f5; color: #888;    border: 1px solid #ddd; }
+
+    /* INFO ROWS */
+    .admin-info {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .admin-info-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #556274;
+      background: rgba(247,250,255,0.95);
+      padding: 7px 11px;
+      border-radius: 8px;
+      border: 1px solid rgba(10,42,85,0.04);
+    }
+    .admin-info-row i { color: #329A9A; font-size: 13px; flex-shrink: 0; }
+
+    /* CARD ACTIONS */
+    .admin-card-actions {
+      display: flex;
+      gap: 6px;
+      padding-top: 10px;
+      border-top: 1px solid #edf1f5;
+      margin-top: auto;
+      flex-wrap: wrap;
+    }
+    .act-btn {
+      flex: 1;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      border-radius: 8px;
+      border: 1px solid #dfe5ec;
+      background: #ffffff;
+      color: #243447;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .act-btn i { font-size: 13px; }
+    .act-btn:hover {
+      background: #0a2a55;
+      color: #fff;
+      border-color: #0a2a55;
+      transform: translateY(-1px);
+    }
+    .act-btn.btn-toggle-on:hover  { background: #c0392b; border-color: #c0392b; }
+    .act-btn.btn-toggle-off:hover { background: #1a7a40; border-color: #1a7a40; }
+    .act-btn.btn-del:hover        { background: #c0392b; border-color: #c0392b; }
+    .act-btn.btn-reset:hover      { background: #b85c00; border-color: #b85c00; }
+
+    /* ── EMPTY / LOADING ── */
+    .empty-state {
+      grid-column: 1/-1;
+      text-align: center;
+      padding: 80px 20px;
+      color: #aaa;
+    }
+    .empty-state h3 { font-size: 18px; color: #888; margin-bottom: 8px; }
+    .empty-state p  { font-size: 14px; }
+
+    /* ══════════════════════════════════════════════
+       MODALS
+    ══════════════════════════════════════════════ */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-box {
+      background: #fff;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+      animation: modalIn 0.3s cubic-bezier(0.22,1,0.36,1);
+      overflow: hidden;
+    }
+    @keyframes modalIn {
+      from { transform: translateY(40px) scale(0.97); opacity: 0; }
+      to   { transform: translateY(0) scale(1);       opacity: 1; }
+    }
+    .modal-head {
+      background: linear-gradient(135deg, #0a2a55, #08306b);
+      color: #fff;
+      padding: 18px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-head h3 { font-size: 16px; font-weight: 700; }
+    .modal-close {
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: #fff;
+      width: 30px; height: 30px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+    .modal-close:hover { background: rgba(255,255,255,0.3); }
+    .modal-body { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 7px; }
+    .form-group label { font-size: 13px; font-weight: 700; color: #0a2a55; }
+    .input-wrap { position: relative; }
+    .input-wrap i {
+      position: absolute;
+      left: 13px; top: 50%;
+      transform: translateY(-50%);
+      color: #aab4c0;
+      font-size: 15px;
+    }
+    .input-wrap input {
+      width: 100%;
+      padding: 12px 14px 12px 40px;
+      border: 1.5px solid #dbe4ee;
+      border-radius: 10px;
+      font-size: 14px;
+      color: #1a1a2e;
+      outline: none;
+      background: #f8fafc;
+      transition: all 0.2s;
+    }
+    .input-wrap input:focus {
+      border-color: #0a2a55;
+      background: #fff;
+      box-shadow: 0 0 0 4px rgba(10,42,85,0.08);
+    }
+    .toggle-pw {
+      position: absolute;
+      right: 13px; top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      color: #aab4c0;
+      font-size: 15px;
+      border: none;
+      background: none;
+      padding: 0;
+    }
+    .toggle-pw:hover { color: #0a2a55; }
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid #eee;
+      display: flex;
+      gap: 10px;
+    }
+    .modal-footer button {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-save {
+      background: linear-gradient(135deg, #0a2a55, #1456a0);
+      color: #fff;
+    }
+    .btn-save:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(10,42,85,0.25); }
+    .btn-cancel-modal { background: #e8edf3; color: #243447; }
+    .btn-cancel-modal:hover { background: #d8e0ea; }
+
+    /* ERROR BOX */
+    .error-box {
+      display: none;
+      background: #fdeaea;
+      color: #c0392b;
+      border: 1px solid #f5c6cb;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .error-box.show { display: block; }
+
+    /* CONFIRM DELETE */
+    .confirm-box {
+      background: #fff;
+      border-radius: 14px;
+      padding: 28px;
+      max-width: 360px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 15px 50px rgba(0,0,0,0.25);
+      animation: modalIn 0.3s cubic-bezier(0.22,1,0.36,1);
+    }
+    .confirm-box .del-icon { font-size: 40px; margin-bottom: 12px; }
+    .confirm-box h3 { color: #0a2a55; font-size: 17px; margin-bottom: 8px; }
+    .confirm-box p  { color: #666; font-size: 13px; margin-bottom: 22px; line-height: 1.5; }
+    .confirm-actions { display: flex; gap: 10px; }
+    .confirm-actions button {
+      flex: 1;
+      padding: 11px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-cancel-del  { background: #e0e0e0; color: #333; }
+    .btn-cancel-del:hover { background: #ccc; }
+    .btn-del-confirm { background: #c0392b; color: #fff; }
+    .btn-del-confirm:hover { background: #a93226; }
+
+    /* RESET PASSWORD MODAL HEAD */
+    .modal-head.amber { background: linear-gradient(135deg, #b85c00, #e07800); }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed;
+      bottom: 28px; right: 28px;
+      background: #0a2a55;
+      color: #fff;
+      padding: 13px 20px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+      z-index: 9999;
+      opacity: 0;
+      transform: translateY(16px);
+      transition: all 0.3s;
+      pointer-events: none;
+    }
+    .toast.show     { opacity: 1; transform: translateY(0); }
+    .toast.toast-success { background: #1a7a40; }
+    .toast.toast-error   { background: #c0392b; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      .header { min-height: 120px; padding: 18px 20px; justify-content: space-between; }
+      .header h1 { position: relative !important; top: unset !important; left: unset !important; transform: none !important; width: auto; margin-right: auto; }
+      .header h1 img { width: 420px; }
+      .header-right { margin-left: 0; gap: 10px; }
+      .admin-grid { grid-template-columns: 1fr; }
+      .page-wrap { padding: 16px 14px 40px; }
+    }
+    @media (max-width: 480px) {
+      .header { min-height: 100px; padding: 14px 16px; }
+      .header h1 img { width: 300px; }
+      .admin-card-actions { flex-wrap: wrap; }
+      .act-btn { min-width: calc(50% - 3px); }
+    }
+    @media (max-width: 600px) {
+      .header, .stats-bar { padding: 14px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<div class="header">
+  <h1><img src="./images/dashboard_header_img.png" alt="Dashboard"></h1>
+  <div class="header-right">
+    <a href="/dashboard" class="btn-back"><i class="bi bi-arrow-left"></i> Dashboard</a>
+  </div>
+</div>
+
+<!-- ── STATS BAR ── -->
+<div class="stats-bar">
+  <div class="stat">
+    <span class="stat-label">Total Admins</span>
+    <span class="stat-value" id="statTotal">—</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Active</span>
+    <span class="stat-value" id="statActive">—</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Inactive</span>
+    <span class="stat-value" id="statInactive">—</span>
+  </div>
+</div>
+
+<!-- ── PAGE WRAP ── -->
+<div class="page-wrap">
+
+  <!-- TITLE ROW -->
+  <div class="page-title-row">
+    <div class="page-title">
+      <div class="page-title-icon"><i class="bi bi-shield-lock-fill"></i></div>
+      <div>
+        <h2>Admin Management</h2>
+        <p>Create, enable/disable and manage admin accounts</p>
+      </div>
+    </div>
+    <button class="btn-new-admin" onclick="openCreateModal()">
+      <i class="bi bi-plus-lg"></i> New Admin
+    </button>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+    <input class="search-box" type="text" id="searchInput" placeholder="Search by name or email...">
+  </div>
+
+  <!-- GRID -->
+  <div class="admin-grid" id="adminGrid">
+    <div class="empty-state" style="padding:40px 20px;">
+      <div style="font-size:40px;margin-bottom:12px;">⏳</div>
+      <h3>Loading admins...</h3>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══ CREATE ADMIN MODAL ══ -->
+<div class="modal-overlay" id="createModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3><i class="bi bi-person-plus-fill" style="margin-right:7px;"></i>Create New Admin</h3>
+      <button class="modal-close" onclick="closeModal('createModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="error-box" id="createError"></div>
+      <div class="form-group">
+        <label>Full Name *</label>
+        <div class="input-wrap">
+          <i class="bi bi-person-fill"></i>
+          <input type="text" id="create_name" placeholder="Admin's full name" autocomplete="off">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Email Address *</label>
+        <div class="input-wrap">
+          <i class="bi bi-envelope-fill"></i>
+          <input type="email" id="create_email" placeholder="admin@example.com" autocomplete="off">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Password *</label>
+        <div class="input-wrap">
+          <i class="bi bi-lock-fill"></i>
+          <input type="password" id="create_password" placeholder="Set a strong password" autocomplete="new-password">
+          <button class="toggle-pw" type="button" onclick="togglePw('create_password','create_pw_icon')">
+            <i class="bi bi-eye-fill" id="create_pw_icon"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel-modal" onclick="closeModal('createModal')">Cancel</button>
+      <button class="btn-save" onclick="createAdmin()">
+        <i class="bi bi-check-circle" style="margin-right:5px;"></i>Create Admin
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RESET PASSWORD MODAL ══ -->
+<div class="modal-overlay" id="resetModal">
+  <div class="modal-box">
+    <div class="modal-head amber">
+      <h3><i class="bi bi-key-fill" style="margin-right:7px;"></i>Reset Password</h3>
+      <button class="modal-close" onclick="closeModal('resetModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="error-box" id="resetError"></div>
+      <p style="font-size:13px;color:#666;background:#fff8eb;border:1px solid #ffd8a8;border-radius:8px;padding:10px 14px;">
+        <i class="bi bi-exclamation-triangle-fill" style="color:#b85c00;margin-right:5px;"></i>
+        Resetting password for: <strong id="resetAdminName">—</strong>
+      </p>
+      <div class="form-group">
+        <label>New Password *</label>
+        <div class="input-wrap">
+          <i class="bi bi-lock-fill"></i>
+          <input type="password" id="reset_password" placeholder="Enter new password" autocomplete="new-password">
+          <button class="toggle-pw" type="button" onclick="togglePw('reset_password','reset_pw_icon')">
+            <i class="bi bi-eye-fill" id="reset_pw_icon"></i>
+          </button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Confirm New Password *</label>
+        <div class="input-wrap">
+          <i class="bi bi-lock-fill"></i>
+          <input type="password" id="reset_confirm" placeholder="Confirm new password" autocomplete="new-password">
+        </div>
+      </div>
+    </div>
+    <input type="hidden" id="reset_adminId">
+    <div class="modal-footer">
+      <button class="btn-cancel-modal" onclick="closeModal('resetModal')">Cancel</button>
+      <button class="btn-save" style="background:linear-gradient(135deg,#b85c00,#e07800);" onclick="resetPassword()">
+        <i class="bi bi-key-fill" style="margin-right:5px;"></i>Reset Password
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ DELETE CONFIRM MODAL ══ -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="confirm-box">
+    <div class="del-icon">🗑️</div>
+    <h3>Delete Admin?</h3>
+    <p id="deleteMsg">This will permanently remove this admin account. They will no longer be able to log in.</p>
+    <div class="confirm-actions">
+      <button class="btn-cancel-del" onclick="closeModal('deleteModal')">Cancel</button>
+      <button class="btn-del-confirm" onclick="confirmDelete()">Yes, Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST ── -->
+<div class="toast" id="toast"></div>
+
+<script>
+  ///////////////////////////////////////////////////////////////
+  // STATE
+  ///////////////////////////////////////////////////////////////
+  let allAdmins      = [];
+  let deleteTargetId = null;
+
+  ///////////////////////////////////////////////////////////////
+  // LOAD ADMINS
+  ///////////////////////////////////////////////////////////////
+  async function loadAdmins() {
+    try {
+      const res  = await fetch("/auth/admins");
+      if (res.status === 403) {
+        document.getElementById("adminGrid").innerHTML = `
+          <div class="empty-state">
+            <div style="font-size:40px;margin-bottom:12px;">🔒</div>
+            <h3>Access Denied</h3>
+            <p>Only superadmins can view this page.</p>
+          </div>`;
+        return;
+      }
+      const data = await res.json();
+      allAdmins  = data.admins || [];
+      updateStats(allAdmins);
+      applySearch();
+    } catch (err) {
+      document.getElementById("adminGrid").innerHTML = `
+        <div class="empty-state">
+          <div style="font-size:40px;margin-bottom:12px;">⚠️</div>
+          <h3>Could not load admins</h3>
+          <p>${err.message}</p>
+        </div>`;
+    }
+  }
+
+  function updateStats(list) {
+    document.getElementById("statTotal").textContent    = list.length;
+    document.getElementById("statActive").textContent   = list.filter(a => a.isActive).length;
+    document.getElementById("statInactive").textContent = list.filter(a => !a.isActive).length;
+  }
+
+  ///////////////////////////////////////////////////////////////
+  // RENDER
+  ///////////////////////////////////////////////////////////////
+  function renderAdmins(list) {
+    const grid = document.getElementById("adminGrid");
+    if (!list.length) {
+      grid.innerHTML = `
+        <div class="empty-state">
+          <div style="font-size:40px;margin-bottom:12px;">👤</div>
+          <h3>No admins found</h3>
+          <p>Click "+ New Admin" to create the first admin account.</p>
+        </div>`;
+      return;
+    }
+
+    grid.innerHTML = list.map(a => {
+      const initials = (a.name || "?").split(" ").map(w => w[0]).slice(0,2).join("").toUpperCase();
+      const statusBadge = a.isActive
+        ? `<span class="status-badge status-active"><i class="bi bi-check-circle-fill"></i> Active</span>`
+        : `<span class="status-badge status-inactive"><i class="bi bi-x-circle-fill"></i> Inactive</span>`;
+      const createdDate = new Date(a.createdAt).toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" });
+      const lastLogin   = a.lastLogin
+        ? new Date(a.lastLogin).toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" })
+        : "Never";
+
+      const toggleLabel = a.isActive ? "Disable" : "Enable";
+      const toggleIcon  = a.isActive ? "bi-slash-circle" : "bi-check-circle";
+      const toggleClass = a.isActive ? "btn-toggle-on" : "btn-toggle-off";
+
+      return `
+      <div class="admin-card${a.isActive ? "" : " inactive"}" id="acard-${a._id}">
+        <div class="admin-card-top">
+          <div class="admin-avatar">${initials}</div>
+          <div class="admin-meta">
+            <div class="admin-name">${escHtml(a.name)}</div>
+            <div class="admin-email">${escHtml(a.email)}</div>
+          </div>
+          ${statusBadge}
+        </div>
+        <div class="admin-info">
+          <div class="admin-info-row">
+            <i class="bi bi-person-badge"></i>
+            <span>Role: <strong>${a.role}</strong></span>
+          </div>
+          <div class="admin-info-row">
+            <i class="bi bi-calendar3"></i>
+            <span>Created: <strong>${createdDate}</strong></span>
+          </div>
+          <div class="admin-info-row">
+            <i class="bi bi-clock-history"></i>
+            <span>Last Login: <strong>${lastLogin}</strong></span>
+          </div>
+          ${a.createdByName ? `<div class="admin-info-row">
+            <i class="bi bi-person-check"></i>
+            <span>Created by: <strong>${escHtml(a.createdByName)}</strong></span>
+          </div>` : ""}
+        </div>
+        <div class="admin-card-actions">
+          <button class="act-btn ${toggleClass}" onclick="toggleAdmin('${a._id}', ${a.isActive})">
+            <i class="bi ${toggleIcon}"></i> ${toggleLabel}
+          </button>
+          <button class="act-btn btn-reset" onclick="openResetModal('${a._id}', '${escAttr(a.name)}')">
+            <i class="bi bi-key-fill"></i> Reset PW
+          </button>
+          <button class="act-btn btn-del" onclick="askDelete('${a._id}', '${escAttr(a.name)}')">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      </div>`;
+    }).join("");
+  }
+
+  ///////////////////////////////////////////////////////////////
+  // SEARCH
+  ///////////////////////////////////////////////////////////////
+  function applySearch() {
+    const q = document.getElementById("searchInput").value.toLowerCase().trim();
+    const result = !q
+      ? allAdmins
+      : allAdmins.filter(a =>
+          (a.name  || "").toLowerCase().includes(q) ||
+          (a.email || "").toLowerCase().includes(q)
+        );
+    renderAdmins(result);
+  }
+  document.getElementById("searchInput").addEventListener("input", applySearch);
+
+  ///////////////////////////////////////////////////////////////
+  // CREATE ADMIN
+  ///////////////////////////////////////////////////////////////
+  function openCreateModal() {
+    document.getElementById("create_name").value     = "";
+    document.getElementById("create_email").value    = "";
+    document.getElementById("create_password").value = "";
+    hideError("createError");
+    document.getElementById("createModal").classList.add("show");
+    setTimeout(() => document.getElementById("create_name").focus(), 100);
+  }
+
+  async function createAdmin() {
+    hideError("createError");
+    const name     = document.getElementById("create_name").value.trim();
+    const email    = document.getElementById("create_email").value.trim();
+    const password = document.getElementById("create_password").value.trim();
+    if (!name || !email || !password) {
+      showError("createError", "Name, email and password are all required.");
+      return;
+    }
+    if (password.length < 6) {
+      showError("createError", "Password must be at least 6 characters.");
+      return;
+    }
+    try {
+      const res  = await fetch("/auth/create-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password })
+      });
+      const data = await res.json();
+      if (!res.ok) { showError("createError", data.error || "Create failed"); return; }
+      closeModal("createModal");
+      showToast("✅ Admin created successfully!", "success");
+      loadAdmins();
+    } catch (err) {
+      showError("createError", "Server error: " + err.message);
+    }
+  }
+
+  ///////////////////////////////////////////////////////////////
+  // TOGGLE ADMIN (ENABLE / DISABLE)
+  ///////////////////////////////////////////////////////////////
+  async function toggleAdmin(adminId, currentlyActive) {
+    try {
+      const res  = await fetch(`/auth/admin/${adminId}/toggle`, { method: "PUT" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Toggle failed");
+      showToast(`✅ Admin ${data.isActive ? "enabled" : "disabled"} successfully!`, "success");
+      loadAdmins();
+    } catch (err) {
+      showToast("❌ " + err.message, "error");
+    }
+  }
+
+  ///////////////////////////////////////////////////////////////
+  // RESET PASSWORD
+  ///////////////////////////////////////////////////////////////
+  function openResetModal(adminId, adminName) {
+    document.getElementById("reset_adminId").value    = adminId;
+    document.getElementById("resetAdminName").textContent = adminName;
+    document.getElementById("reset_password").value  = "";
+    document.getElementById("reset_confirm").value   = "";
+    hideError("resetError");
+    document.getElementById("resetModal").classList.add("show");
+    setTimeout(() => document.getElementById("reset_password").focus(), 100);
+  }
+
+  async function resetPassword() {
+    hideError("resetError");
+    const adminId  = document.getElementById("reset_adminId").value;
+    const newPw    = document.getElementById("reset_password").value.trim();
+    const confirmPw= document.getElementById("reset_confirm").value.trim();
+    if (!newPw) { showError("resetError", "Please enter a new password."); return; }
+    if (newPw.length < 6) { showError("resetError", "Password must be at least 6 characters."); return; }
+    if (newPw !== confirmPw) { showError("resetError", "Passwords do not match."); return; }
+    try {
+      const res  = await fetch(`/auth/admin/${adminId}/reset-password`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newPassword: newPw })
+      });
+      const data = await res.json();
+      if (!res.ok) { showError("resetError", data.error || "Reset failed"); return; }
+      closeModal("resetModal");
+      showToast("✅ Password reset successfully!", "success");
+    } catch (err) {
+      showError("resetError", "Server error: " + err.message);
+    }
+  }
+
+  ///////////////////////////////////////////////////////////////
+  // DELETE ADMIN
+  ///////////////////////////////////////////////////////////////
+  function askDelete(adminId, adminName) {
+    deleteTargetId = adminId;
+    document.getElementById("deleteMsg").textContent =
+      `This will permanently remove "${adminName}". They will no longer be able to log in. This cannot be undone.`;
+    document.getElementById("deleteModal").classList.add("show");
+  }
+
+  async function confirmDelete() {
+    if (!deleteTargetId) return;
+    try {
+      const res = await fetch(`/auth/admin/${deleteTargetId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (res.ok) {
+        allAdmins = allAdmins.filter(a => a._id !== deleteTargetId);
+        updateStats(allAdmins);
+        applySearch();
+        showToast("✅ Admin deleted successfully!", "success");
+      } else {
+        showToast("❌ " + (data.error || "Delete failed"), "error");
+      }
+    } catch { showToast("❌ Server error", "error"); }
+    closeModal("deleteModal");
+    deleteTargetId = null;
+  }
+
+  ///////////////////////////////////////////////////////////////
+  // HELPERS
+  ///////////////////////////////////////////////////////////////
+  function closeModal(id) {
+    document.getElementById(id).classList.remove("show");
+  }
+
+  function showError(elId, msg) {
+    const el = document.getElementById(elId);
+    el.textContent = "❌ " + msg;
+    el.classList.add("show");
+  }
+
+  function hideError(elId) {
+    document.getElementById(elId).classList.remove("show");
+  }
+
+  function showToast(msg, type = "") {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.className   = "toast show" + (type ? ` toast-${type}` : "");
+    setTimeout(() => { t.className = "toast"; }, 3500);
+  }
+
+  function togglePw(inputId, iconId) {
+    const inp  = document.getElementById(inputId);
+    const icon = document.getElementById(iconId);
+    if (inp.type === "password") {
+      inp.type         = "text";
+      icon.className   = "bi bi-eye-slash-fill";
+    } else {
+      inp.type         = "password";
+      icon.className   = "bi bi-eye-fill";
+    }
+  }
+
+  function escHtml(str) {
+    return String(str || "")
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  function escAttr(str) {
+    return String(str || "").replace(/'/g, "\\'");
+  }
+
+  // Allow Enter key in create modal
+  document.getElementById("createModal").addEventListener("keydown", e => {
+    if (e.key === "Enter") createAdmin();
+  });
+  document.getElementById("resetModal").addEventListener("keydown", e => {
+    if (e.key === "Enter") resetPassword();
+  });
+
+  ///////////////////////////////////////////////////////////////
+  // INIT
+  ///////////////////////////////////////////////////////////////
+  loadAdmins();
+</script>
+
+</body>
+</html>

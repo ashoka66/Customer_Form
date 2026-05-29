@@ -15,19 +15,531 @@ const FRONTEND = path.join(__dirname, "../frontend");
 const EXCEL_PATH = path.join(__dirname, "customers.xlsx");
 const { google } = require("googleapis");
 
+
+
 const SHEET_ID = process.env.GOOGLE_SHEET_ID;
 
-app.use(cors());
+const session      = require("express-session");
+const MongoStore = require("connect-mongo")(session);
+const bcrypt       = require("bcryptjs");
+const User         = require("./models/User");
+
+app.use(cors({
+
+  origin: true,
+  credentials: true  
+}));
+
+
+// ==============================27-05-2026====================
+
+// ══════════════════════════════════════════
+// SESSION SETUP
+// ══════════════════════════════════════════
+app.use(session({
+  secret: process.env.SESSION_SECRET || "2d1da86182b77da7f41f9b68d9cb92b90aee634fd6ca634a7ced29bb7fcd2af4",
+  resave: false,
+  saveUninitialized: false,
+  store: new MongoStore({
+    mongooseConnection: mongoose.connection,
+    ttl: 24 * 60 * 60
+}),
+  cookie: {
+    maxAge: 24 * 60 * 60 * 1000,
+    httpOnly: true
+  }
+}));
+
+// ══════════════════════════════════════════
+// AUTH MIDDLEWARE
+// ══════════════════════════════════════════
+
+// Protect any route — must be logged in
+function requireAuth(req, res, next) {
+  if (!req.session?.user) {
+    // API request → return 401
+    if (req.path.startsWith("/api") || req.headers["content-type"]?.includes("application/json")) {
+      return res.status(401).json({ error: "Not logged in" });
+    }
+    // Page request → redirect to login
+    return res.redirect("/login");
+  }
+  next();
+}
+
+// Protect route — must be superadmin
+function requireSuperAdmin(req, res, next) {
+  if (!req.session?.user || req.session.user.role !== "superadmin") {
+    if (req.headers["accept"]?.includes("application/json")) {
+      return res.status(403).json({ error: "Superadmin access required" });
+    }
+    return res.redirect("/dashboard");
+  }
+  next();
+}
+
+
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-app.get("/",         (_req, res) => res.sendFile(path.join(FRONTEND, "dashboard.html")));
-app.get("/dashboard",(_req, res) => res.sendFile(path.join(FRONTEND, "dashboard.html")));
-app.get("/form",     (_req, res) => res.sendFile(path.join(FRONTEND, "pl-bl.html")));
-app.get("/edit/:id", (_req, res) => res.sendFile(path.join(FRONTEND, "pl-bl.html")));
 
-app.use(express.static(FRONTEND));
+// ══════════════════════════════════════════
+// UPLOADS ONLY — no auth needed
+// ══════════════════════════════════════════
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// ══════════════════════════════════════════
+// PAGE ROUTES — PROTECTED
+// ══════════════════════════════════════════
+app.get("/",             requireAuth, (_req, res) => res.sendFile(path.join(FRONTEND, "dashboard.html")));
+app.get("/dashboard",    requireAuth, (_req, res) => res.sendFile(path.join(FRONTEND, "dashboard.html")));
+app.get("/form",         requireAuth, (_req, res) => res.sendFile(path.join(FRONTEND, "pl-bl.html")));
+app.get("/edit/:id",     requireAuth, (_req, res) => res.sendFile(path.join(FRONTEND, "pl-bl.html")));
+app.get("/admin-manage", requireSuperAdmin, (_req, res) => res.sendFile(path.join(FRONTEND, "admin-manage.html")));
+
+// ══════════════════════════════════════════
+// STATIC FILES LAST — css, js, images only
+// ══════════════════════════════════════════
+app.use(express.static(FRONTEND));
+
+
+
+
+
+// ══════════════════════════════════════════
+// AUTH ROUTES
+// ══════════════════════════════════════════
+
+app.get("/login", (req, res) => {
+  if (req.session?.user) return res.redirect("/dashboard");
+  res.sendFile(path.join(FRONTEND, "login.html"));
+});
+
+app.post("/auth/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password)
+      return res.status(400).json({ error: "Email and password required" });
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!user)
+      return res.status(401).json({ error: "Invalid email or password" });
+    if (!user.isActive)
+      return res.status(403).json({ error: "Your account has been disabled. Contact superadmin." });
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch)
+      return res.status(401).json({ error: "Invalid email or password" });
+
+    await User.updateOne(
+      { _id: user._id }, 
+      { lastLogin: new Date() 
+      });
+
+    req.session.user = {
+      id:    user._id,
+      name:  user.name,
+      email: user.email,
+      role:  user.role
+    };
+    res.json({ ok: true, role: user.role, name: user.name });
+  } catch (err) {
+    console.error("Login error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/auth/logout", (req, res) => {
+  req.session.destroy(() => {
+    res.json({ ok: true });
+  });
+});
+
+app.get("/auth/me", requireAuth, (req, res) => {
+  res.json({ user: req.session.user });
+});
+
+app.post("/auth/create-admin", requireSuperAdmin, async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    if (!name || !email || !password)
+      return res.status(400).json({ error: "Name, email and password required" });
+    const existing = await User.findOne({ email: email.toLowerCase().trim() });
+    if (existing)
+      return res.status(400).json({ error: "Email already registered" });
+    const admin = new User({
+      name, email, password,
+      role:          "admin",
+      createdBy:     req.session.user.id,
+      createdByName: req.session.user.name
+    });
+    await admin.save();
+    res.json({ ok: true, message: `Admin ${name} created successfully` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/auth/admins", requireSuperAdmin, async (req, res) => {
+  try {
+    const admins = await User.find({ role: "admin" }, { password: 0 })
+      .sort({ createdAt: -1 });
+    res.json({ admins });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put("/auth/admin/:id/toggle", requireSuperAdmin, async (req, res) => {
+  try {
+    const admin = await User.findById(req.params.id);
+    if (!admin) return res.status(404).json({ error: "Admin not found" });
+    admin.isActive = !admin.isActive;
+    await admin.save();
+    res.json({ ok: true, isActive: admin.isActive,
+      message: `Admin ${admin.isActive ? "enabled" : "disabled"}` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete("/auth/admin/:id", requireSuperAdmin, async (req, res) => {
+  try {
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ ok: true, message: "Admin deleted" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put("/auth/admin/:id/reset-password", requireSuperAdmin, async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    if (!newPassword)
+      return res.status(400).json({ error: "New password required" });
+    const admin = await User.findById(req.params.id);
+    if (!admin)
+      return res.status(404).json({ error: "Admin not found" });
+    admin.password = newPassword;
+    await admin.save();
+    res.json({ ok: true, message: "Password reset successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ⚠️ TEMPORARY — visit once then DELETE this route
+
+// ══════════════════════════════════════════════════════════
+// BANKER REQUIREMENT MODEL
+// ══════════════════════════════════════════════════════════
+const BankerRequirement = mongoose.model("BankerRequirement", new mongoose.Schema({
+  customerId:  { type: String, required: true },
+  status:      { type: String, enum: ["draft", "submitted"], default: "draft" },
+  addedBy:     { type: String, default: "" },
+  addedByName: { type: String, default: "" },
+  data: {
+    employmentType: { type: String, default: "" },
+    loanAmount:     { type: String, default: "" },
+    loanType:       { type: String, default: "" },
+    cibil:          { type: String, default: "" },
+    income:         { type: String, default: "" },
+    bank:           { type: String, default: "" },
+    payslips:       { type: String, default: "3" },
+    bankStmt:       { type: String, default: "6" },
+    notes:          { type: String, default: "" }
+  }
+}, { timestamps: true }));
+
+// ── PAGE ROUTE ──
+app.get("/banker-requirement", requireAuth, (_req, res) =>
+  res.sendFile(path.join(FRONTEND, "banker-requirement.html")));
+
+// ── GET ALL ──
+app.get("/api/banker-requirements", requireAuth, async (req, res) => {
+  try {
+    const records = await BankerRequirement.find().sort({ createdAt: -1 });
+    res.json({ records });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── CREATE ──
+app.post("/api/banker-requirements", requireAuth, async (req, res) => {
+  try {
+    const { customerId, employmentType, loanAmount, loanType,
+            cibil, income, bank, payslips, bankStmt, notes } = req.body;
+
+    if (!employmentType || !loanAmount || !loanType)
+      return res.status(400).json({ error: "Employment type, loan amount and loan type are required" });
+
+    let cid = (customerId || "").trim();
+    if (!cid) cid = await generateCustomerId();
+
+    const record = new BankerRequirement({
+      customerId:  cid,
+      status:      "submitted",
+      addedBy:     req.session.user?.email || "",
+      addedByName: req.session.user?.name  || "",
+      data: { employmentType, loanAmount, loanType,
+              cibil: cibil||"", income: income||"", bank: bank||"",
+              payslips: payslips||"3", bankStmt: bankStmt||"6", notes: notes||"" }
+    });
+    await record.save();
+    res.json({ ok: true, record });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── UPDATE ──
+app.put("/api/banker-requirements/:id", requireAuth, async (req, res) => {
+  try {
+    const { employmentType, loanAmount, loanType,
+            cibil, income, bank, payslips, bankStmt, notes } = req.body;
+    const record = await BankerRequirement.findByIdAndUpdate(
+      req.params.id,
+      { $set: {
+          "data.employmentType": employmentType,
+          "data.loanAmount":     loanAmount,
+          "data.loanType":       loanType,
+          "data.cibil":          cibil    || "",
+          "data.income":         income   || "",
+          "data.bank":           bank     || "",
+          "data.payslips":       payslips || "3",
+          "data.bankStmt":       bankStmt || "6",
+          "data.notes":          notes    || "",
+          status: "submitted"
+      }},
+      { new: true }
+    );
+    if (!record) return res.status(404).json({ error: "Not found" });
+    res.json({ ok: true, record });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── DELETE ──
+app.delete("/api/banker-requirements/:id", requireAuth, async (req, res) => {
+  try {
+    await BankerRequirement.findByIdAndDelete(req.params.id);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── GENERATE PDF (no name/email/password) ──
+app.get("/api/banker-requirements/:id/pdf", requireAuth, async (req, res) => {
+  try {
+    const record = await BankerRequirement.findById(req.params.id);
+    if (!record) return res.status(404).json({ error: "Not found" });
+    const d = record.data || {};
+
+    const loanLabels = {
+      "fresh-pl":"Fresh Personal Loan","fresh-bl":"Fresh Business Loan",
+      "fresh-hl":"Fresh Home Loan","fresh-lap":"Fresh LAP",
+      "fresh-ppl":"Fresh Plot Purchase","fresh-p+c":"Fresh Plot + Construction",
+      "renewal":"Renewal"
+    };
+
+    const PDFDocument = require("pdfkit");
+    const doc = new PDFDocument({ margin: 50, size: "A4" });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition",
+      `inline; filename="banker-${record.customerId}.pdf"`);
+    doc.pipe(res);
+
+    // Header bar — blue
+    doc.rect(0, 0, 612, 80).fill("#1456a0");
+    doc.fillColor("#ffffff").fontSize(22).font("Helvetica-Bold")
+       .text("Banker Requirement", 50, 25);
+    doc.fontSize(11).font("Helvetica")
+       .text(`Customer ID: ${record.customerId}`, 50, 52);
+
+    doc.moveDown(3);
+    doc.fillColor("#0a2a55").fontSize(14).font("Helvetica-Bold")
+       .text("Requirement Details", 50, 100);
+    doc.moveTo(50, 118).lineTo(545, 118).strokeColor("#1456a0").lineWidth(2).stroke();
+
+    const fields = [
+      ["Employment Type",    d.employmentType === "salaried" ? "Salaried" : d.employmentType === "selfEmployed" ? "Self Employed" : "—"],
+      ["Loan Type",          loanLabels[d.loanType] || d.loanType || "—"],
+      ["Loan Amount",        d.loanAmount || "—"],
+      ["CIBIL Score",        d.cibil || "—"],
+      ["Monthly Income",     d.income || "—"],
+      ["Preferred Bank",     d.bank || "—"],
+      ["Payslips Required",  d.payslips && d.payslips !== "0" ? d.payslips + " months" : "Not required"],
+      ["Bank Statements",    d.bankStmt && d.bankStmt !== "0" ? d.bankStmt + " months" : "Not required"],
+    ];
+
+    let y = 130;
+    fields.forEach(([label, value]) => {
+      doc.fillColor("#666666").fontSize(10).font("Helvetica-Bold").text(label, 50, y);
+      doc.fillColor("#1a1a2e").fontSize(11).font("Helvetica").text(value, 200, y);
+      y += 28;
+      doc.moveTo(50, y - 6).lineTo(545, y - 6).strokeColor("#edf1f5").lineWidth(0.5).stroke();
+    });
+
+    if (d.notes) {
+      y += 10;
+      doc.fillColor("#0a2a55").fontSize(13).font("Helvetica-Bold").text("Additional Notes", 50, y);
+      y += 20;
+      doc.fillColor("#556274").fontSize(11).font("Helvetica")
+         .text(d.notes, 50, y, { width: 495, lineGap: 4 });
+    }
+
+    // Footer
+    doc.rect(0, 770, 612, 72).fill("#f0f4f8");
+    doc.fillColor("#8d99ab").fontSize(9).font("Helvetica")
+       .text("Generated by Customer Management System — Confidential",
+             50, 782, { align: "center", width: 512 });
+    doc.text(`Generated on: ${new Date().toLocaleDateString("en-IN")}`,
+             50, 796, { align: "center", width: 512 });
+
+    doc.end();
+  } catch (err) {
+    console.error("Banker PDF error:", err.message);
+    if (!res.headersSent) res.status(500).json({ error: err.message });
+  }
+});
+
+// ── DOWNLOAD ZIP (requirement PDF + payslips + bank statements from customer record) ──
+app.get("/api/banker-requirements/:id/zip", requireAuth, async (req, res) => {
+  try {
+    const record = await BankerRequirement.findById(req.params.id);
+    if (!record) return res.status(404).json({ error: "Not found" });
+
+    const d = record.data || {};
+    const loanLabels = {
+      "fresh-pl":"Fresh Personal Loan","fresh-bl":"Fresh Business Loan",
+      "fresh-hl":"Fresh Home Loan","fresh-lap":"Fresh LAP",
+      "fresh-ppl":"Fresh Plot Purchase","fresh-p+c":"Fresh Plot + Construction",
+      "renewal":"Renewal"
+    };
+
+    // Build the requirement PDF in memory
+    const PDFDocument = require("pdfkit");
+    const pdfDoc = new PDFDocument({ margin: 50, size: "A4" });
+    const pdfChunks = [];
+    pdfDoc.on("data", chunk => pdfChunks.push(chunk));
+
+    const pdfReady = new Promise(resolve => pdfDoc.on("end", () => resolve(Buffer.concat(pdfChunks))));
+
+    pdfDoc.rect(0, 0, 612, 80).fill("#1456a0");
+    pdfDoc.fillColor("#ffffff").fontSize(22).font("Helvetica-Bold").text("Banker Requirement", 50, 25);
+    pdfDoc.fontSize(11).font("Helvetica").text(`Customer ID: ${record.customerId}`, 50, 52);
+    pdfDoc.fillColor("#0a2a55").fontSize(14).font("Helvetica-Bold").text("Requirement Details", 50, 100);
+    pdfDoc.moveTo(50, 118).lineTo(545, 118).strokeColor("#1456a0").lineWidth(2).stroke();
+
+    const fields = [
+      ["Employment Type",   d.employmentType === "salaried" ? "Salaried" : "Self Employed"],
+      ["Loan Type",         loanLabels[d.loanType] || d.loanType || "—"],
+      ["Loan Amount",       d.loanAmount || "—"],
+      ["CIBIL Score",       d.cibil || "—"],
+      ["Monthly Income",    d.income || "—"],
+      ["Preferred Bank",    d.bank || "—"],
+      ["Payslips Required", d.payslips && d.payslips !== "0" ? d.payslips + " months" : "Not required"],
+      ["Bank Statements",   d.bankStmt && d.bankStmt !== "0" ? d.bankStmt + " months" : "Not required"],
+    ];
+    let y = 130;
+    fields.forEach(([label, value]) => {
+      pdfDoc.fillColor("#666666").fontSize(10).font("Helvetica-Bold").text(label, 50, y);
+      pdfDoc.fillColor("#1a1a2e").fontSize(11).font("Helvetica").text(value, 200, y);
+      y += 28;
+      pdfDoc.moveTo(50, y-6).lineTo(545, y-6).strokeColor("#edf1f5").lineWidth(0.5).stroke();
+    });
+    if (d.notes) {
+      y += 10;
+      pdfDoc.fillColor("#0a2a55").fontSize(13).font("Helvetica-Bold").text("Notes", 50, y);
+      y += 20;
+      pdfDoc.fillColor("#556274").fontSize(11).font("Helvetica").text(d.notes, 50, y, { width: 495 });
+    }
+    pdfDoc.rect(0, 770, 612, 72).fill("#f0f4f8");
+    pdfDoc.fillColor("#8d99ab").fontSize(9).font("Helvetica")
+      .text("Generated by Customer Management System — Confidential", 50, 782, { align: "center", width: 512 });
+    pdfDoc.end();
+
+    const pdfBuffer = await pdfReady;
+
+    // Set up ZIP stream
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition",
+      `attachment; filename="banker-${record.customerId}.zip"`);
+
+    const archive = archiver("zip", { zlib: { level: 9 } });
+    archive.on("error", err => { throw err; });
+    archive.pipe(res);
+
+    // 1. Add the requirement PDF
+    archive.append(pdfBuffer, { name: `${record.customerId}/banker-requirement.pdf` });
+
+    // 2. Pull customer files if the customerId matches a customer record
+    const customer = await Customer.findOne({ customerId: record.customerId });
+    if (customer) {
+      const rawFiles = customer.files?.toObject ? customer.files.toObject() : customer.files;
+      const uploadsBase = path.join(__dirname, "uploads");
+
+      // Payslips (offerLetter + salary-related pdfs stored under customer uploads)
+      // Bank statements
+      const fileGroups = [
+        { files: rawFiles.bankFiles,  folder: "bank-statements" },
+        { files: rawFiles.itrFiles,   folder: "itr-files" },
+      ];
+      // Single files that are relevant for banker
+      const singleFiles = [
+        { file: rawFiles.cibilFile,   name: "cibil-report" },
+        { file: rawFiles.offerLetter, name: "offer-letter" },
+        { file: rawFiles.form16File,  name: "form16" },
+        { file: rawFiles.form26File,  name: "form26" },
+      ];
+
+      fileGroups.forEach(({ files, folder }) => {
+        const arr = Array.isArray(files) ? files : (files ? [files] : []);
+        arr.filter(Boolean).forEach((f, i) => {
+          const fullPath = path.join(uploadsBase, f);
+          if (fs.existsSync(fullPath)) {
+            const ext = path.extname(f);
+            archive.file(fullPath, { name: `${record.customerId}/${folder}/${folder}-${i+1}${ext}` });
+          }
+        });
+      });
+
+      singleFiles.forEach(({ file, name }) => {
+        if (file) {
+          const fullPath = path.join(uploadsBase, file);
+          if (fs.existsSync(fullPath)) {
+            const ext = path.extname(file);
+            archive.file(fullPath, { name: `${record.customerId}/documents/${name}${ext}` });
+          }
+        }
+      });
+
+      // Add full customer details JSON (no sensitive data masking — admin only download)
+      archive.append(
+        JSON.stringify(customer.latestData, null, 2),
+        { name: `${record.customerId}/customer-details.json` }
+      );
+    }
+
+    await archive.finalize();
+  } catch (err) {
+    console.error("Banker ZIP error:", err.message);
+    if (!res.headersSent) res.status(500).json({ error: err.message });
+  }
+});
+
+
+
+
+
+// =====================================================
+
+// Easy logout via browser URL
+app.get("/logout", (req, res) => {
+  req.session.destroy(() => {
+    res.redirect("/login");
+  });
+});
+
+
+
+
+
+// ================================27-05-2026====================
 
 mongoose
   .connect(process.env.MONGO_URI)
@@ -44,6 +556,12 @@ const DailyCounter = mongoose.model("DailyCounter", new mongoose.Schema({
 
 const Customer = mongoose.model("Customer", new mongoose.Schema({
   customerId:   { type: String, required: true, unique: true },
+
+   // ← ADD THESE TWO LINES
+  addedBy:      { type: String, default: "" },      // admin email
+  addedByName:  { type: String, default: "" },      // admin name
+
+
   email:        { type: String, default: "" },
   phone:        { type: String, default: "" },
   version:      { type: Number, default: 1 },
@@ -149,6 +667,38 @@ async function ensureSheetHeader(sheets) {
       range: "Sheet1!A1",
       valueInputOption: "RAW",
       requestBody: { values: [EXCEL_COLUMNS.map(c => c.header)] }
+    });
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SHEET_ID,
+      requestBody: {
+        requests: [
+          {
+            repeatCell: {
+              range: { sheetId: 0, startRowIndex: 0, endRowIndex: 1 },
+              cell: {
+                userEnteredFormat: {
+                  backgroundColor: { red: 0.04, green: 0.165, blue: 0.333 },
+                  textFormat: {
+                    bold: true,
+                    foregroundColor: { red: 1, green: 1, blue: 1 },
+                    fontSize: 11
+                  },
+                  horizontalAlignment: "CENTER",
+                  verticalAlignment: "MIDDLE"
+                }
+              },
+              fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)"
+            }
+          },
+          {
+            updateSheetProperties: {
+              properties: { sheetId: 0, gridProperties: { frozenRowCount: 1 } },
+              fields: "gridProperties.frozenRowCount"
+            }
+          }
+        ]
+      }
     });
   }
 }
@@ -648,13 +1198,13 @@ app.get("/download-excel", (_req, res) => {
   res.download(EXCEL_PATH, "customers.xlsx");
 });
 
-// Redirect to Google Sheet export if configured, otherwise fall back to Excel
+// Redirect to the Google Sheet online view (preserves live sync). Fall back to Excel if not configured.
 app.get("/download-googlesheet", async (_req, res) => {
+  console.log("SHEET_ID value:", JSON.stringify(SHEET_ID)); // ← ADD THIS
   try {
     if (SHEET_ID) {
-      // Public export URL (works if the sheet is accessible to the requester)
-      const exportUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=xlsx`;
-      return res.redirect(exportUrl);
+      const viewUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`;
+      return res.redirect(viewUrl);
     }
     if (fs.existsSync(EXCEL_PATH)) return res.download(EXCEL_PATH, "customers.xlsx");
     res.status(404).json({ error: "No sheet or excel available" });
@@ -662,6 +1212,154 @@ app.get("/download-googlesheet", async (_req, res) => {
     console.error("Download Google Sheet error:", err.message);
     if (fs.existsSync(EXCEL_PATH)) return res.download(EXCEL_PATH, "customers.xlsx");
     res.status(500).json({ error: err.message });
+  }
+});
+
+
+// ══════════════════════════════════════════════════════════
+// PROPERTY REQUIREMENT MODEL
+// ══════════════════════════════════════════════════════════
+const PropertyRequirement = mongoose.model("PropertyRequirement", new mongoose.Schema({
+  customerId:  { type: String, required: true },
+  status:      { type: String, enum: ["draft", "submitted"], default: "draft" },
+  addedBy:     { type: String, default: "" },
+  addedByName: { type: String, default: "" },
+  data: {
+    propertyType: { type: String, default: "" },
+    sft:          { type: String, default: "" },
+    budget:       { type: String, default: "" },
+    facing:       { type: String, default: "" },
+    location:     { type: String, default: "" },
+    amenities:    { type: String, default: "" },
+    description:  { type: String, default: "" }
+  }
+}, { timestamps: true }));
+
+// ── PAGE ROUTE ──
+app.get("/property-requirement", requireAuth, (_req, res) =>
+  res.sendFile(path.join(FRONTEND, "property-requirement.html")));
+
+// ── GET ALL ──
+app.get("/api/property-requirements", requireAuth, async (req, res) => {
+  try {
+    const records = await PropertyRequirement.find().sort({ createdAt: -1 });
+    res.json({ records });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── CREATE ──
+app.post("/api/property-requirements", requireAuth, async (req, res) => {
+  try {
+    const { customerId, propertyType, sft, budget, facing, location, amenities, description } = req.body;
+    if (!propertyType || !sft || !budget)
+      return res.status(400).json({ error: "Property type, SFT and budget are required" });
+
+    // Auto-generate customerId if not provided
+    let cid = (customerId || "").trim();
+    if (!cid) cid = await generateCustomerId();
+
+    const record = new PropertyRequirement({
+      customerId:  cid,
+      status:      "submitted",
+      addedBy:     req.session.user?.email || "",
+      addedByName: req.session.user?.name  || "",
+      data: { propertyType, sft, budget, facing: facing||"", location: location||"", amenities: amenities||"", description: description||"" }
+    });
+    await record.save();
+    res.json({ ok: true, record });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── UPDATE ──
+app.put("/api/property-requirements/:id", requireAuth, async (req, res) => {
+  try {
+    const { propertyType, sft, budget, facing, location, amenities, description } = req.body;
+    const record = await PropertyRequirement.findByIdAndUpdate(
+      req.params.id,
+      { $set: { "data.propertyType": propertyType, "data.sft": sft, "data.budget": budget,
+                "data.facing": facing||"", "data.location": location||"",
+                "data.amenities": amenities||"", "data.description": description||"",
+                status: "submitted" } },
+      { new: true }
+    );
+    if (!record) return res.status(404).json({ error: "Not found" });
+    res.json({ ok: true, record });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── DELETE ──
+app.delete("/api/property-requirements/:id", requireAuth, async (req, res) => {
+  try {
+    await PropertyRequirement.findByIdAndDelete(req.params.id);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── GENERATE PDF (no name/email/password) ──
+app.get("/api/property-requirements/:id/pdf", requireAuth, async (req, res) => {
+  try {
+    const record = await PropertyRequirement.findById(req.params.id);
+    if (!record) return res.status(404).json({ error: "Not found" });
+    const d = record.data || {};
+
+    // Build a clean HTML PDF using puppeteer-free approach with PDFKit
+    const PDFDocument = require("pdfkit");
+    const doc = new PDFDocument({ margin: 50, size: "A4" });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition",
+      `inline; filename="property-${record.customerId}.pdf"`);
+    doc.pipe(res);
+
+    // Header bar
+    doc.rect(0, 0, 612, 80).fill("#329A9A");
+    doc.fillColor("#ffffff").fontSize(22).font("Helvetica-Bold")
+       .text("Property Requirement", 50, 25);
+    doc.fontSize(11).font("Helvetica")
+       .text(`Customer ID: ${record.customerId}`, 50, 52);
+
+    doc.moveDown(3);
+    doc.fillColor("#0a2a55").fontSize(14).font("Helvetica-Bold")
+       .text("Property Details", 50, 100);
+    doc.moveTo(50, 118).lineTo(545, 118).strokeColor("#329A9A").lineWidth(2).stroke();
+
+    const fields = [
+      ["Property Type",  d.propertyType || "—"],
+      ["Square Feet",    d.sft ? d.sft + " sq.ft" : "—"],
+      ["Budget",         d.budget || "—"],
+      ["Facing",         d.facing || "—"],
+      ["Location",       d.location || "—"],
+      ["Amenities",      d.amenities || "—"],
+    ];
+
+    let y = 130;
+    fields.forEach(([label, value]) => {
+      doc.fillColor("#666666").fontSize(10).font("Helvetica-Bold").text(label, 50, y);
+      doc.fillColor("#1a1a2e").fontSize(11).font("Helvetica").text(value, 200, y);
+      y += 28;
+      doc.moveTo(50, y - 6).lineTo(545, y - 6).strokeColor("#edf1f5").lineWidth(0.5).stroke();
+    });
+
+    if (d.description) {
+      y += 10;
+      doc.fillColor("#0a2a55").fontSize(13).font("Helvetica-Bold").text("Description", 50, y);
+      y += 20;
+      doc.fillColor("#556274").fontSize(11).font("Helvetica")
+         .text(d.description, 50, y, { width: 495, lineGap: 4 });
+    }
+
+    // Footer
+    doc.rect(0, 770, 612, 72).fill("#f0f4f8");
+    doc.fillColor("#8d99ab").fontSize(9).font("Helvetica")
+       .text("Generated by Customer Management System — Confidential",
+             50, 782, { align: "center", width: 512 });
+    doc.text(`Generated on: ${new Date().toLocaleDateString("en-IN")}`,
+             50, 796, { align: "center", width: 512 });
+
+    doc.end();
+  } catch (err) {
+    console.error("PDF error:", err.message);
+    if (!res.headersSent) res.status(500).json({ error: err.message });
   }
 });
 
