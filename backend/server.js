@@ -149,6 +149,23 @@ app.get("/admin-manage", requireSuperAdmin, (_req, res) => res.sendFile(path.joi
 // ══════════════════════════════════════════
 // STATIC FILES LAST — css, js, images only
 // ══════════════════════════════════════════
+// Protect direct access to HTML files: if a user requests `*.html` directly
+// and isn't authenticated, redirect to `/login`. This prevents bypassing
+// the `requireAuth`/`requireSuperAdmin` page routes which protect the
+// non-`.html` routes (e.g., `/dashboard`, `/admin-manage`). Allow the
+// login page to remain publicly accessible.
+app.use((req, res, next) => {
+  try {
+    const pathLower = (req.path || "").toLowerCase();
+    const isHtml = pathLower.endsWith('.html');
+    const isLogin = pathLower === '/login' || pathLower === '/login.html';
+    if (isHtml && !isLogin) {
+      if (!req.session?.user) return res.redirect('/login');
+    }
+  } catch (e) { /* ignore and continue */ }
+  next();
+});
+
 app.use(express.static(FRONTEND));
 
 
