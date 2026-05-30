@@ -1357,13 +1357,15 @@ app.post("/submit-lead", (req, res, next) => {
       gstFiles:          movedFiles.gstFiles          || "",
       labourFiles:       movedFiles.labourFiles       || ""
     };
+    // Determine the current admin (if any) so new records are attributed correctly
+    const userEmail = req.session.user?.email || "";
+    const userName = req.session.user?.name || "";
+
     const customer = new Customer({ customerId: newId, email, phone, version: 1, latestData: formData, files: newFiles,
       addedBy: userEmail, addedByName: userName });
     await customer.save();
 
     // Auto-create empty PropertyRequirement and BankerRequirement records
-    const userEmail = req.session.user?.email || "";
-    const userName = req.session.user?.name || "";
     
     // Populate property requirement data from submitted form where available
     const propData = {
