@@ -1,6 +1,17 @@
 const mongoose = require("mongoose");
 const bcrypt   = require("bcryptjs");
 
+/*
+  User model
+
+  Purpose and runtime notes:
+  - Represents application users (both `superadmin` and `admin`).
+  - Used by `server.js` for authentication, session storage (only selected fields), and admin management.
+  - Fields: `name`, `email`, `password`, `role`, `isActive`, `createdBy`, `createdByName`, `lastLogin`.
+  - Pre-save hook hashes the password whenever it is modified before saving to the database.
+  - `comparePassword` is an instance method used during login to verify credentials.
+*/
+
 const UserSchema = new mongoose.Schema({
   name:          { type: String, required: true },
   email:         { type: String, required: true, unique: true, lowercase: true, trim: true },

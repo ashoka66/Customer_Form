@@ -158,6 +158,24 @@
 </head>
 <body>
 
+<!--
+  Admin Management page (Superadmin)
+
+  Execution / interaction flow:
+  1. Page HTML loads and renders static layout (header, stats bar, admin grid, modals).
+  2. At the end of this file the script runs `loadAdmins()` to fetch data from the backend.
+  3. `loadAdmins()` calls `/auth/admins-with-stats` to get the list of admins and total customer count.
+  4. The response populates `allAdmins`, updates the stats counters, and calls `applySearch()` → `renderAdmins()`.
+  5. Each admin card includes buttons that call APIs:
+     - Toggle: PUT `/auth/admin/:id/toggle`
+     - Reset Password: PUT `/auth/admin/:id/reset-password`
+     - Delete: DELETE `/auth/admin/:id`
+     - View customers: GET `/api/admin/:id/customers` (opens modal and lists customers added by that admin).
+  6. Modals (create, reset, customers, delete) are purely client-side UI; they make API calls and then refresh the list by calling `loadAdmins()`.
+
+  Note: All API calls expect JSON and will show errors in the modal/toast if they fail.
+-->
+
 <div class="header">
   <h1><img src="./images/dashboard_header_img.png" alt="Dashboard"></h1>
   <div class="header-right">
@@ -252,6 +270,13 @@
 <div class="toast" id="toast"></div>
 
 <script>
+  /*
+    Client-side variables and helpers
+
+    - `allAdmins`: cached array of admin objects returned from `/auth/admins-with-stats`.
+    - The functions below implement CRUD operations for admins, UI rendering, and modal handling.
+    - Entry point: `loadAdmins()` is called at the bottom to populate the page on load.
+  */
   let allAdmins = [];
   let deleteTargetId = null;
 

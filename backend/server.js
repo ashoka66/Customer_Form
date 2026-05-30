@@ -1,4 +1,24 @@
 require("dotenv").config();
+
+/*
+  server.js — Application entry and HTTP routes
+
+  High-level execution order (what runs and when):
+  1. Load environment and import modules (this file).
+  2. Initialize Express app and constants (PORT, BASE_URL, FRONTEND, etc.).
+  3. Configure global middleware (CORS, session, body-parsers, static files).
+  4. Define helper functions and auth middleware (requireAuth, requireSuperAdmin).
+  5. Define Mongoose models used by routes (DailyCounter, User, BankerRequirement, Customer, etc.).
+  6. Define page routes (serve HTML pages) — these are lightweight and protected by middleware where required.
+  7. Define API routes (authentication, admin management, customer CRUD, property/banker requirements, exports).
+  8. Start the server (app.listen) at the bottom of this file.
+
+  Notes on how to read this file:
+  - Sections are grouped and labelled (AUTH ROUTES, PAGE ROUTES, UPLOAD HANDLERS, MODELS).
+  - Middleware functions (requireAuth, requireSuperAdmin) run for protected routes before the route handler.
+  - Routes that return JSON are used by the frontend via `fetch()`; page routes typically `sendFile` the frontend HTML.
+  - This file intentionally keeps page-serving (frontend) and API logic together for simplicity.
+*/
 const express  = require("express");
 const mongoose = require("mongoose");
 const multer   = require("multer");
@@ -36,17 +56,33 @@ app.use(cors({
 // ══════════════════════════════════════════
 // SESSION SETUP
 // ══════════════════════════════════════════
+// Purpose:
+// - Initialize and configure Express session middleware using MongoDB as the
+//   session store. Sessions persist `req.session.user` after successful login.
+// - Cookies are configured for a 24-hour lifetime. Secret comes from env.
+// Runtime notes:
+// - Session middleware must be registered before route handling so handlers
+//   and middleware (e.g., `requireAuth`) can access `req.session`.
+// - The MongoStore uses the existing Mongoose connection; ensure mongoose
+//   connects before creating many sessions in production.
+// Session configuration
+// - Sessions expire after 1 hour of inactivity. `cookie.maxAge` controls the
+//   browser cookie expiry; `ttl` controls how long the session is kept in
+//   MongoDB. `rolling: true` refreshes the cookie expiry on each response so
+//   active users stay logged in while inactive users are logged out after 1 hour.
 app.use(session({
   secret: process.env.SESSION_SECRET || "2d1da86182b77da7f41f9b68d9cb92b90aee634fd6ca634a7ced29bb7fcd2af4",
   resave: false,
   saveUninitialized: false,
+  rolling: true, // refresh expiry on each response
   store: new MongoStore({
     mongooseConnection: mongoose.connection,
-    ttl: 24 * 60 * 60
-}),
+    ttl: 60 * 60 // 1 hour (seconds)
+  }),
   cookie: {
-    maxAge: 24 * 60 * 60 * 1000,
-    httpOnly: true
+    maxAge: 60 * 60 * 1000, // 1 hour (milliseconds)
+    httpOnly: true,
+    sameSite: "lax"
   }
 }));
 
@@ -54,7 +90,10 @@ app.use(session({
 // AUTH MIDDLEWARE
 // ══════════════════════════════════════════
 
-// Protect any route — must be logged in
+// requireAuth middleware — must be logged in
+// Behavior:
+// - If no active session, API requests (JSON) receive 401; page requests are redirected to `/login`.
+// - Use `requireAuth` on routes that need a logged-in user.
 function requireAuth(req, res, next) {
   if (!req.session?.user) {
     // API request → return 401
@@ -67,7 +106,10 @@ function requireAuth(req, res, next) {
   next();
 }
 
-// Protect route — must be superadmin
+// requireSuperAdmin middleware — restricts access to superadmin users
+// Behavior:
+// - If the user is not logged in or not a superadmin, API requests get 403 JSON;
+//   page requests are redirected to `/dashboard` to avoid exposing the page.
 function requireSuperAdmin(req, res, next) {
   if (!req.session?.user || req.session.user.role !== "superadmin") {
     if (req.headers["accept"]?.includes("application/json")) {
@@ -86,11 +128,18 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 // ══════════════════════════════════════════
 // UPLOADS ONLY — no auth needed
 // ══════════════════════════════════════════
+// Note:
+// - Serve static uploaded files from `backend/uploads`. These are public URLs
+//   and therefore this route intentionally does not enforce authentication.
+// - Ensure sensitive or private files are not stored here without access checks.
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // ══════════════════════════════════════════
 // PAGE ROUTES — PROTECTED
 // ══════════════════════════════════════════
+// These routes serve the single-page frontend HTML pages. They are protected
+// with middleware so only authorized users can request them; the pages then
+// use client-side JavaScript to call the JSON API endpoints for data.
 app.get("/",             requireAuth, (_req, res) => res.sendFile(path.join(FRONTEND, "dashboard.html")));
 app.get("/dashboard",    requireAuth, (_req, res) => res.sendFile(path.join(FRONTEND, "dashboard.html")));
 app.get("/form",         requireAuth, (_req, res) => res.sendFile(path.join(FRONTEND, "pl-bl.html")));
@@ -109,6 +158,11 @@ app.use(express.static(FRONTEND));
 // ══════════════════════════════════════════
 // AUTH ROUTES
 // ══════════════════════════════════════════
+// Overview:
+// - Handles login/logout, session population (`/auth/login`, `/auth/logout`).
+// - `/auth/me` returns the currently authenticated user (used by frontends).
+// - Admin management endpoints (create/list/toggle/delete/reset) are protected
+//   by `requireSuperAdmin` and used by the admin management UI.
 
 app.get("/login", (req, res) => {
   if (req.session?.user) return res.redirect("/dashboard");
@@ -178,6 +232,9 @@ app.post("/auth/create-admin", requireSuperAdmin, async (req, res) => {
   }
 });
 
+// GET /auth/admins
+// - Returns a list of admin users (no passwords). Protected: superadmin only.
+// - Frontend: `admin-manage.html` may use this (or `/auth/admins-with-stats`).
 app.get("/auth/admins", requireSuperAdmin, async (req, res) => {
   try {
     const admins = await User.find({ role: "admin" }, { password: 0 })
@@ -188,6 +245,9 @@ app.get("/auth/admins", requireSuperAdmin, async (req, res) => {
   }
 });
 
+// PUT /auth/admin/:id/toggle
+// - Toggle an admin's `isActive` status. Protected: superadmin only.
+// - Returns `{ ok: true, isActive }` on success.
 app.put("/auth/admin/:id/toggle", requireSuperAdmin, async (req, res) => {
   try {
     const admin = await User.findById(req.params.id);
@@ -201,6 +261,9 @@ app.put("/auth/admin/:id/toggle", requireSuperAdmin, async (req, res) => {
   }
 });
 
+// DELETE /auth/admin/:id
+// - Permanently deletes an admin account. Protected: superadmin only.
+// - Frontend calls this when the superadmin confirms deletion from the UI.
 app.delete("/auth/admin/:id", requireSuperAdmin, async (req, res) => {
   try {
     await User.findByIdAndDelete(req.params.id);
@@ -210,6 +273,9 @@ app.delete("/auth/admin/:id", requireSuperAdmin, async (req, res) => {
   }
 });
 
+// PUT /auth/admin/:id/reset-password
+// - Reset an admin's password (superadmin action). Expects `{ newPassword }` in body.
+// - The model's pre-save hook will hash the new password before saving.
 app.put("/auth/admin/:id/reset-password", requireSuperAdmin, async (req, res) => {
   try {
     const { newPassword } = req.body;
@@ -228,9 +294,13 @@ app.put("/auth/admin/:id/reset-password", requireSuperAdmin, async (req, res) =>
 
 // ⚠️ TEMPORARY — visit once then DELETE this route
 
-// ══════════════════════════════════════════════════════════
-// BANKER REQUIREMENT MODEL
-// ══════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════=
+// PROPERTY REQUIREMENT MODEL
+// ═════════════════════════════════════════════════════════=
+// Purpose:
+// - Stores quick property requirement records associated with a `customerId`.
+// - Each record includes `addedBy` metadata so we can attribute which admin
+//   created the requirement. The API below exposes GET/POST/PUT/DELETE for the UI.
 const BankerRequirement = mongoose.model("BankerRequirement", new mongoose.Schema({
   customerId:  { type: String, required: true },
   status:      { type: String, enum: ["draft", "submitted"], default: "draft" },
@@ -264,13 +334,21 @@ const BankerRequirement = mongoose.model("BankerRequirement", new mongoose.Schem
 }, { timestamps: true }));
 
 // ── PAGE ROUTE ──
+// Banker requirement page (protected)
+// - Serves `banker-requirement.html`; the page uses `/api/banker-requirements` and
+//   related endpoints to fetch and manage banker requirement records.
 app.get("/banker-requirement", requireAuth, (_req, res) =>
   res.sendFile(path.join(FRONTEND, "banker-requirement.html")));
 
 // ── GET ALL ──
 app.get("/api/banker-requirements", requireAuth, async (req, res) => {
   try {
-    const records = await BankerRequirement.find().sort({ createdAt: -1 });
+    // If the user is a superadmin, return all records. Otherwise return only
+    // records created by the logged-in admin (`addedBy` holds admin email).
+    const query = (req.session.user && req.session.user.role === "superadmin")
+      ? {}
+      : { addedBy: req.session.user.email };
+    const records = await BankerRequirement.find(query).sort({ createdAt: -1 });
     res.json({ records });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -290,6 +368,22 @@ app.post("/api/banker-requirements", requireAuth, (req, res, next) => {
     if (!cid) cid = await generateCustomerId();
 
     const uploadedFiles = req.files || {};
+
+    // Server-side validation: ensure payslip and bank statement files are PDFs
+    // - payslip1/2/3 must be PDF if provided
+    // - bankFiles (array) must be PDFs and no more than 6 files (multer already limits it)
+    const isPdf = f => (f.mimetype === "application/pdf") || (f.originalname||"".toLowerCase().endsWith('.pdf'));
+    const pdfFields = ['payslip1','payslip2','payslip3'];
+    for (const pf of pdfFields) {
+      if (uploadedFiles[pf] && uploadedFiles[pf].length) {
+        if (!isPdf(uploadedFiles[pf][0])) return res.status(400).json({ error: `${pf} must be a PDF` });
+      }
+    }
+    if (uploadedFiles.bankFiles && uploadedFiles.bankFiles.length) {
+      if (uploadedFiles.bankFiles.length > 6) return res.status(400).json({ error: "Maximum 6 bank statement PDFs allowed" });
+      for (const bf of uploadedFiles.bankFiles) if (!isPdf(bf)) return res.status(400).json({ error: "All bank statement files must be PDFs" });
+    }
+
     const movedFiles = moveFiles(uploadedFiles, cid);
 
     const files = {
@@ -323,27 +417,61 @@ app.post("/api/banker-requirements", requireAuth, (req, res, next) => {
 });
 
 // ── UPDATE ──
-app.put("/api/banker-requirements/:id", requireAuth, async (req, res) => {
+// Update banker requirement — accepts multipart/form-data (files + fields)
+app.put("/api/banker-requirements/:id", requireAuth, (req, res, next) => {
+  uploadFields(req, res, err => { if (err) return res.status(400).json({ error: err.message }); next(); });
+}, async (req, res) => {
   try {
     const { employmentType, loanAmount, loanType,
             cibil, income, bank, payslips, bankStmt, notes } = req.body;
-    const record = await BankerRequirement.findByIdAndUpdate(
-      req.params.id,
-      { $set: {
-          "data.employmentType": employmentType,
-          "data.loanAmount":     loanAmount,
-          "data.loanType":       loanType,
-          "data.cibil":          cibil    || "",
-          "data.income":         income   || "",
-          "data.bank":           bank     || "",
-          "data.payslips":       payslips || "3",
-          "data.bankStmt":       bankStmt || "6",
-          "data.notes":          notes    || "",
-          status: "submitted"
-      }},
-      { new: true }
-    );
+
+    const record = await BankerRequirement.findById(req.params.id);
     if (!record) return res.status(404).json({ error: "Not found" });
+
+    // Validate uploaded files (only PDF for payslips and bank statements)
+    const uploadedFiles = req.files || {};
+    const isPdf = f => (f.mimetype === "application/pdf") || ((f.originalname||"").toLowerCase().endsWith('.pdf'));
+    ['payslip1','payslip2','payslip3'].forEach(pf => {
+      if (uploadedFiles[pf] && uploadedFiles[pf].length && !isPdf(uploadedFiles[pf][0])) throw new Error(pf + ' must be a PDF');
+    });
+    if (uploadedFiles.bankFiles && uploadedFiles.bankFiles.length) {
+      if (uploadedFiles.bankFiles.length > 6) return res.status(400).json({ error: 'Maximum 6 bank statement PDFs allowed' });
+      for (const bf of uploadedFiles.bankFiles) if (!isPdf(bf)) return res.status(400).json({ error: 'All bank statement files must be PDFs' });
+    }
+
+    // Move uploaded files into customer dir and merge with existing files
+    const movedFiles = moveFiles(uploadedFiles, record.customerId);
+    const rawExisting = record.files?.toObject ? record.files.toObject() : record.files || {};
+    const mergedFiles = {
+      cibilFile:      movedFiles.cibilFile || rawExisting.cibilFile || "",
+      payslip1:       movedFiles.payslip1 || rawExisting.payslip1 || "",
+      payslip2:       movedFiles.payslip2 || rawExisting.payslip2 || "",
+      payslip3:       movedFiles.payslip3 || rawExisting.payslip3 || "",
+      bankFiles:      movedFiles.bankFiles ? (Array.isArray(movedFiles.bankFiles) ? movedFiles.bankFiles : [movedFiles.bankFiles]) : (rawExisting.bankFiles || []),
+      form16File:     movedFiles.form16File || rawExisting.form16File || "",
+      form26File:     movedFiles.form26File || rawExisting.form26File || "",
+      itrFiles:       movedFiles.itrFiles ? (Array.isArray(movedFiles.itrFiles) ? movedFiles.itrFiles : [movedFiles.itrFiles]) : (rawExisting.itrFiles || []),
+      gstFiles:       movedFiles.gstFiles || rawExisting.gstFiles || "",
+      offerLetter:    movedFiles.offerLetter || rawExisting.offerLetter || "",
+      appointmentLetter: movedFiles.appointmentLetter || rawExisting.appointmentLetter || "",
+      relievingLetter:   movedFiles.relievingLetter || rawExisting.relievingLetter || ""
+    };
+
+    // Update data fields — prefer provided values, fall back to existing, then use placeholder
+    const placeholder = "-";
+    record.data.employmentType = employmentType || record.data.employmentType || placeholder;
+    record.data.loanAmount     = loanAmount     || record.data.loanAmount     || placeholder;
+    record.data.loanType       = loanType       || record.data.loanType       || placeholder;
+    record.data.cibil          = cibil          || record.data.cibil          || placeholder;
+    record.data.income         = income         || record.data.income         || placeholder;
+    record.data.bank           = bank           || record.data.bank           || placeholder;
+    record.data.payslips       = payslips       || record.data.payslips       || "0";
+    record.data.bankStmt       = bankStmt       || record.data.bankStmt       || "0";
+    record.data.notes          = notes          || record.data.notes          || "";
+
+    record.files = mergedFiles;
+    record.status = "submitted";
+    await record.save();
     res.json({ ok: true, record });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -589,6 +717,44 @@ const DailyCounter = mongoose.model("DailyCounter", new mongoose.Schema({
   count:   { type: Number, default: 0 }
 }));
 
+// ─────────────────────────────────────────────────────────────────
+// ADMINS WITH STATS — for superadmin UI
+// Returns admin list plus per-admin customer counts and total customers
+// ─────────────────────────────────────────────────────────────────
+app.get("/auth/admins-with-stats", requireSuperAdmin, async (req, res) => {
+  try {
+    const admins = await User.find({ role: "admin" }, { password: 0 }).sort({ createdAt: -1 }).lean();
+
+    // Aggregate customer counts grouped by the admin's email (addedBy)
+    const agg = await BankerRequirement.aggregate([
+      { $group: { _id: "$addedBy", count: { $sum: 1 } } }
+    ]);
+    const counts = {};
+    agg.forEach(a => { counts[a._id] = a.count; });
+
+    const adminsWithCounts = admins.map(a => ({ ...a, customerCount: counts[a.email] || 0 }));
+    const totalCustomers = agg.reduce((s, a) => s + a.count, 0);
+
+    res.json({ admins: adminsWithCounts, totalCustomers });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/*
+  Customer model (in-file)
+
+  Purpose:
+  - Stores the canonical customer record and its latest form data in `latestData`.
+  - Linked records (PropertyRequirement, BankerRequirement) are created separately but reference `customerId`.
+  Key fields:
+  - `customerId`: human-readable unique id (e.g., CUST-30MAY26-1002)
+  - `addedBy`, `addedByName`: the admin who created the record (email + name)
+  - `latestData`: mixed object containing the most recent submitted form fields
+  - `files`: attachments stored under the `uploads/` folder; filenames saved here
+  Notes:
+  - This schema is used throughout server.js for create/update/read operations related to customers.
+*/
 const Customer = mongoose.model("Customer", new mongoose.Schema({
   customerId:   { type: String, required: true, unique: true },
 
@@ -622,6 +788,10 @@ const Customer = mongoose.model("Customer", new mongoose.Schema({
   }]
 }, { timestamps: true }));
 
+// generateCustomerId()
+// - Produces a new unique customer id in the format: CUST-DDMONYY-<sequence>
+// - Uses a `DailyCounter` collection to keep a per-day incrementing counter.
+// - Timezone: converts to Asia/Kolkata (IST) to ensure IDs align with business day.
 async function generateCustomerId() {
   const now = new Date();
 
@@ -645,19 +815,29 @@ async function generateCustomerId() {
   return `CUST-${dateKey}-${1000 + counter.count}`;
 }
 
+// buildEditLink(id)
+// - Returns the frontend edit URL for a given `customerId` used in responses.
 function buildEditLink(id) { return `${BASE_URL}/edit/${id}`; }
 
+// ensureCustomerDir(id)
+// - Ensures the per-customer uploads directory exists and returns its path.
 function ensureCustomerDir(id) {
   const dir = path.join(__dirname, "uploads", id);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   return dir;
 }
 
+// getDraftId(phone, email)
+// - Returns a stable provisional id used when saving temporary drafts to Excel
+//   or Google Sheet before the final customer id is generated.
 function getDraftId(phone, email) {
   const key = (phone || email || "unknown").replace(/[^a-zA-Z0-9]/g, "");
   return `DRAFT-${key}`;
 }
 
+// deleteDraftRow(provisionalId)
+// - Removes a draft row (identified by provisional id) from the Excel backup.
+// - Best-effort: silently returns if the Excel file is not present.
 async function deleteDraftRow(provisionalId) {
   if (!fs.existsSync(EXCEL_PATH)) return;
   try {
@@ -680,7 +860,11 @@ async function deleteDraftRow(provisionalId) {
 }
 
 
-//new google sheet code will be added here in future for backup of data to google sheet. For now excel is used for backup and record keeping.
+// getGoogleSheet()
+// - Helper to authenticate with Google Sheets API using the service account
+//   credentials file. Returns a `sheets` client used by update/ensure helpers.
+// - Note: This project currently uses Excel files as the primary backup; the
+//   Google Sheets integration is optional and uses `GOOGLE_SHEET_ID` when set.
 async function getGoogleSheet() {
   const auth = new google.auth.GoogleAuth({
     keyFile: path.join(__dirname, "google-credentials.json"),
@@ -956,6 +1140,9 @@ async function processExcelQueue() {
     processExcelQueue();   // ← already existed, now always runs
   }
 }
+// Multer storage configuration and upload field definitions
+// - Files are saved temporarily then moved into a per-customer folder by `moveFiles()`.
+// - `uploadFields` lists expected file fields and their max counts for form submissions.
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
     const tempDir = path.join(__dirname, "uploads", "temp");
@@ -968,6 +1155,7 @@ const storage = multer.diskStorage({
   }
 });
 const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
+// `upload` is a multer instance used on routes that accept files.
 const uploadFields = upload.fields([
   { name: "summaryPdf", maxCount: 1 }, { name: "cibilFile", maxCount: 1 },
   { name: "payslip1", maxCount: 1 }, { name: "payslip2", maxCount: 1 }, { name: "payslip3", maxCount: 1 },
@@ -978,6 +1166,9 @@ const uploadFields = upload.fields([
   { name: "labourFiles", maxCount: 1 }
 ]);
 
+// moveFiles(uploadedFiles, customerId)
+// - Moves uploaded files from multer's temp location into the customer's
+//   `uploads/<customerId>/` directory and returns a mapping of fields → filename(s).
 function moveFiles(uploadedFiles, customerId) {
   const customerDir = ensureCustomerDir(customerId);
   const result = {};
@@ -995,15 +1186,20 @@ function moveFiles(uploadedFiles, customerId) {
   return result;
 }
 
+// GET /generate-id
+// - Utility endpoint used by the frontend to request a new `customerId` prior
+//   to full form submission (optional). Uses `generateCustomerId()`.
 app.get("/generate-id", async (req, res) => {
   try {
     res.json({ customerId: await generateCustomerId() });
   } catch (err) { res.status(500).json({ error: "Could not generate ID" }); }
 });
 
+// POST /auto-save
+// - Lightweight autosave endpoint used while filling the form. If a customer
+//   record exists it updates `latestData`; otherwise it writes a provisional
+//   draft row to Excel/Google Sheet using `getDraftId()`.
 app.post("/auto-save", async (req, res) => {
-
-   console.log("Auto-save hit:", req.body?.email, req.body?.phone);
   try {
     const { email, phone, formData: rawData } = req.body;
     if (!email && !phone) return res.json({ ok: true });
@@ -1049,6 +1245,10 @@ app.post("/auto-save", async (req, res) => {
   }
 });
 
+// POST /check-customer
+// - Checks whether a customer already exists by email or phone and returns
+//   the existing record metadata if found. Used by the frontend to avoid
+//   duplicate customer creation.
 app.post("/check-customer", async (req, res) => {
   try {
     const { email, phone } = req.body;
@@ -1060,6 +1260,11 @@ app.post("/check-customer", async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// POST /submit-lead
+// - Core endpoint for creating or updating a customer record. Handles file
+//   uploads (via `uploadFields`) and coordinates creating Customer,
+//   PropertyRequirement and BankerRequirement records, updating Excel/Sheet
+//   backups, and returning the created/updated `customerId` to the client.
 app.post("/submit-lead", (req, res, next) => {
   uploadFields(req, res, err => { if (err) return res.status(400).json({ error: err.message }); next(); });
 }, async (req, res) => {
@@ -1102,6 +1307,11 @@ app.post("/submit-lead", (req, res, next) => {
       existing.files      = newFiles;
       if (email) existing.email = email;
       if (phone) existing.phone = phone;
+      // Ensure `addedBy` is set so admin-specific listings can filter customers.
+      if ((!existing.addedBy || existing.addedBy === "") && req.session?.user) {
+        existing.addedBy = req.session.user.email || "";
+        existing.addedByName = req.session.user.name || "";
+      }
       await existing.save();
 //3.
       await updateExcel(cid, formData, newFiles, existing.version);
@@ -1130,27 +1340,52 @@ app.post("/submit-lead", (req, res, next) => {
       gstFiles:          movedFiles.gstFiles          || "",
       labourFiles:       movedFiles.labourFiles       || ""
     };
-    const customer = new Customer({ customerId: newId, email, phone, version: 1, latestData: formData, files: newFiles });
+    const customer = new Customer({ customerId: newId, email, phone, version: 1, latestData: formData, files: newFiles,
+      addedBy: userEmail, addedByName: userName });
     await customer.save();
 
     // Auto-create empty PropertyRequirement and BankerRequirement records
     const userEmail = req.session.user?.email || "";
     const userName = req.session.user?.name || "";
     
+    // Populate property requirement data from submitted form where available
+    const propData = {
+      propertyType: formData.propertyType || "-",
+      sft:          formData.sft || formData.propertyArea || "-",
+      budget:       formData.budget || formData.loanRequired || "-",
+      facing:       formData.facing || "-",
+      location:     formData.propertyLocation || formData.location || "-",
+      amenities:    formData.amenities || "-",
+      description:  formData.description || "-"
+    };
+
     await PropertyRequirement.create({
       customerId: newId,
       status: "draft",
       addedBy: userEmail,
       addedByName: userName,
-      data: {}
+      data: propData
     });
-    
+
+    // Populate banker requirement data from submitted form where available
+    const bankerData = {
+      employmentType: formData.employmentType || "-",
+      loanAmount:     formData.loanRequired || formData.loanAmount || "-",
+      loanType:       formData.loanType || "-",
+      cibil:          formData.cibil || "-",
+      income:         formData.monthlyIncome || formData.income || "-",
+      bank:           formData.existingBank || formData.bank || "-",
+      payslips:       formData.payslips || "0",
+      bankStmt:       formData.bankStmt || "0",
+      notes:          formData.notes || ""
+    };
+
     await BankerRequirement.create({
       customerId: newId,
       status: "draft",
       addedBy: userEmail,
       addedByName: userName,
-      data: {}
+      data: bankerData
     });
 
  //3.   
@@ -1173,6 +1408,10 @@ app.post("/submit-lead", (req, res, next) => {
   }
 });
 
+// GET /customer/:id
+// - Returns a single customer's full record including `latestData`, file URLs
+//   (constructed from `uploads/`), and timestamps. Publicly callable when the
+//   frontend needs to load a specific customer for editing or viewing.
 app.get("/customer/:id", async (req, res) => {
   try {
     const c = await Customer.findOne({ customerId: req.params.id });
@@ -1188,13 +1427,23 @@ app.get("/customer/:id", async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.get("/customers", async (_req, res) => {
+// GET /customers
+// - Returns a lightweight list of customers used for dashboards and lists.
+// - Superadmin: returns all customers. Admin: returns only customers they added.
+// - Only returns minimal `latestData` fields to keep payloads small.
+app.get("/customers", requireAuth, async (req, res) => {
   try {
-    const list = await Customer.find({}, {
+    const baseProjection = {
       customerId: 1, version: 1, updatedAt: 1, createdAt: 1,
       "latestData.applicantName": 1, "latestData.applicantNumber": 1,
       "latestData.applicantEmail": 1, "latestData.loanType": 1, "latestData.loanRequired": 1
-    }).sort({ updatedAt: -1 });
+    };
+
+    const query = (req.session.user && req.session.user.role === "superadmin")
+      ? {}
+      : { addedBy: req.session.user.email };
+
+    const list = await Customer.find(query, baseProjection).sort({ updatedAt: -1 });
     res.json({ total: list.length, customers: list });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -1256,7 +1505,6 @@ app.get("/download-excel", (_req, res) => {
 
 // Redirect to the Google Sheet online view (preserves live sync). Fall back to Excel if not configured.
 app.get("/download-googlesheet", async (_req, res) => {
-  console.log("SHEET_ID value:", JSON.stringify(SHEET_ID)); // ← ADD THIS
   try {
     if (SHEET_ID) {
       const viewUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`;
@@ -1267,6 +1515,36 @@ app.get("/download-googlesheet", async (_req, res) => {
   } catch (err) {
     console.error("Download Google Sheet error:", err.message);
     if (fs.existsSync(EXCEL_PATH)) return res.download(EXCEL_PATH, "customers.xlsx");
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────
+// GET customers added by a specific admin (used by admin-manage view)
+// Returns array of customers with `customerId`, `latestData`, `createdAt`
+// ─────────────────────────────────────────────────────────────────
+app.get("/api/admin/:id/customers", requireSuperAdmin, async (req, res) => {
+  try {
+    const admin = await User.findById(req.params.id).lean();
+    if (!admin) return res.status(404).json({ error: "Admin not found" });
+
+    // Find all BankerRequirement records created by this admin (use addedBy email)
+    const records = await BankerRequirement.find({ addedBy: admin.email }).sort({ createdAt: -1 }).lean();
+    const ids = records.map(r => r.customerId).filter(Boolean);
+
+    // Fetch matching Customer documents and return minimal fields
+    const customers = ids.length ? await Customer.find(
+      { customerId: { $in: ids } },
+      { customerId: 1, latestData: 1, createdAt: 1 }
+    ).sort({ createdAt: -1 }).lean() : [];
+
+    // Preserve ordering based on records (most recent first)
+    const byId = {};
+    customers.forEach(c => { byId[c.customerId] = c; });
+    const ordered = ids.map(id => byId[id]).filter(Boolean);
+
+    res.json({ customers: ordered });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
@@ -1296,9 +1574,16 @@ app.get("/property-requirement", requireAuth, (_req, res) =>
   res.sendFile(path.join(FRONTEND, "property-requirement.html")));
 
 // ── GET ALL ──
+// GET /api/property-requirements
+// - Returns all PropertyRequirement records for listing in the UI.
+// - Protected: requires an authenticated user.
 app.get("/api/property-requirements", requireAuth, async (req, res) => {
   try {
-    const records = await PropertyRequirement.find().sort({ createdAt: -1 });
+    // Superadmin: all records. Admin: only records they added (by email).
+    const query = (req.session.user && req.session.user.role === "superadmin")
+      ? {}
+      : { addedBy: req.session.user.email };
+    const records = await PropertyRequirement.find(query).sort({ createdAt: -1 });
     res.json({ records });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

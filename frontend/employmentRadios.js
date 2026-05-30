@@ -1,3 +1,12 @@
+/*
+    employmentRadios.js
+
+    Purpose:
+    - Toggle visibility of form sections based on radio inputs on the customer form.
+    - Expected to run after the DOM is loaded and requires inputs with name="employmentType" and name="form16".
+    - Controls elements with IDs: `salariedSection`, `selfEmpSection`, `form16Yes`, `form16No`.
+*/
+
 // Employment type toggle
 document.querySelectorAll('input[name="employmentType"]').forEach(radio => {
     radio.addEventListener("change", function () {

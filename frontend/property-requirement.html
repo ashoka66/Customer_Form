@@ -687,6 +687,18 @@
 </head>
 <body>
 
+<!--
+  Property Requirement page
+
+  Execution flow:
+  - Page renders a grid of property requirement cards and a quick-add modal.
+  - Client scripts (near end of file) call `/api/property-requirements` to fetch records,
+    and POST/PUT endpoints to create or update them.
+  - The quick-add modal creates a PropertyRequirement record linked to a Customer.
+
+  Note: Actions that alter data call the backend APIs and then refresh the grid.
+-->
+
 <!-- ── HEADER ── -->
 <div class="header">
   <h1><img src="./images/dashboard_header_img.png" alt="Dashboard"></h1>
@@ -919,6 +931,7 @@
         <div class="wa-copy-row">
           <input type="text" id="waCopyLink" readonly>
           <button class="wa-copy-btn" id="waCopyBtn" onclick="copyWaLink()">Copy</button>
+          <button class="wa-copy-btn" id="waDownloadBtn" style="margin-left:8px;display:none;" onclick="downloadWaPdf()">Download PDF</button>
         </div>
       </div>
     </div>
@@ -948,6 +961,7 @@
 let allRecords    = [];
 let deleteTargetId = null;
 let waCurrentRecord = null;
+let waPdfUrl = null;
 
 ///////////////////////////////////////////////////////////////
 // LOAD
@@ -1206,10 +1220,18 @@ function openWaModal(id) {
   document.getElementById("waPhoneInput").classList.remove("error");
   document.getElementById("waErrorMsg").classList.remove("show");
   const pdfUrl = `${location.origin}/api/property-requirements/${id}/pdf`;
-  document.getElementById("waCopyLink").value = pdfUrl;
-  document.getElementById("waCopyBtn").textContent = "Copy";
-  document.getElementById("waCopyBtn").classList.remove("copied");
-  document.getElementById("waModal").classList.add("show");
+  fetch(pdfUrl, { credentials: 'include' }).then(r => { if (!r.ok) throw new Error('Could not fetch PDF'); return r.blob(); })
+    .then(b => {
+      if (waPdfUrl) URL.revokeObjectURL(waPdfUrl);
+      waPdfUrl = URL.createObjectURL(b);
+      document.getElementById("waCopyLink").value = `PDF ready: property-${waCurrentRecord.customerId}.pdf`;
+      document.getElementById("waCopyBtn").textContent = "Copy";
+      document.getElementById("waCopyBtn").classList.remove("copied");
+      const dl = document.getElementById('waDownloadBtn'); if (dl) dl.style.display = 'inline-block';
+    }).catch(() => {
+      document.getElementById("waCopyLink").value = pdfUrl;
+      const dl = document.getElementById('waDownloadBtn'); if (dl) dl.style.display = 'none';
+    }).finally(() => document.getElementById("waModal").classList.add("show"));
 }
 
 function onPhoneInput() {
@@ -1243,12 +1265,11 @@ function sendViaWhatsApp() {
     `Budget: ${d.budget || "—"}\n` +
     `Facing: ${d.facing || "—"}\n` +
     `Location: ${d.location || "—"}\n` +
-    `Amenities: ${d.amenities || "—"}\n\n` +
-    `PDF: ${location.origin}/api/property-requirements/${waCurrentRecord._id}/pdf`
+    `Amenities: ${d.amenities || "—"}`
   );
   window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
   closeModal("waModal");
-  showToast("✅ Opening WhatsApp...", "success");
+  showToast("✅ Opening WhatsApp... (attach PDF manually)", "success");
 }
 
 function sendViaSMS() {
@@ -1266,20 +1287,28 @@ function sendViaSMS() {
 }
 
 function copyWaLink() {
-  const link = document.getElementById("waCopyLink").value;
-  navigator.clipboard.writeText(link).then(() => {
+  const val = document.getElementById("waCopyLink").value;
+  navigator.clipboard.writeText(val).then(() => {
     const btn = document.getElementById("waCopyBtn");
     btn.textContent = "Copied!";
     btn.classList.add("copied");
-    showToast("✅ Link copied!", "success");
+    showToast("✅ Copied!", "success");
   }).catch(() => {
     const ta = document.createElement("textarea");
-    ta.value = link; document.body.appendChild(ta); ta.select();
+    ta.value = val; document.body.appendChild(ta); ta.select();
     document.execCommand("copy"); document.body.removeChild(ta);
     const btn = document.getElementById("waCopyBtn");
     btn.textContent = "Copied!";
     btn.classList.add("copied");
   });
+}
+
+function downloadWaPdf() {
+  if (!waPdfUrl) { showToast('PDF not ready','error'); return; }
+  const a = document.createElement('a');
+  a.href = waPdfUrl;
+  a.download = `property-${waCurrentRecord.customerId}.pdf`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
 ///////////////////////////////////////////////////////////////
@@ -1314,6 +1343,11 @@ async function confirmDelete() {
 ///////////////////////////////////////////////////////////////
 function closeModal(id) {
   document.getElementById(id).classList.remove("show");
+  if (id === 'waModal') {
+    if (waPdfUrl) { URL.revokeObjectURL(waPdfUrl); waPdfUrl = null; }
+    const dl = document.getElementById('waDownloadBtn'); if (dl) dl.style.display = 'none';
+    const inp = document.getElementById('waCopyLink'); if (inp) inp.value = '';
+  }
 }
 
 function showToast(msg, type = "") {

@@ -165,6 +165,17 @@
 </head>
 <body>
 
+<!--
+  Banker Requirement page
+
+  Execution flow:
+  - Renders banker requirement cards and statistics.
+  - Client scripts (later in this file) call `/api/banker-requirements` to fetch/create/update records.
+  - Quick-add modal posts banker requirement data and optionally creates linked Customer records.
+
+  Note: ZIP download and document-related actions call backend endpoints to bundle files.
+-->
+
 <div class="header">
   <h1><img src="./images/dashboard_header_img.png" alt="Dashboard"></h1>
   <div class="header-right">
@@ -364,6 +375,27 @@
         <div class="form-group"><label>Bank Name (preferred)</label><input type="text" id="edit_bank" placeholder="e.g. SBI, HDFC"></div>
         <div class="form-group"><label>Payslips Available</label><select id="edit_payslips"><option value="3">3 Months</option><option value="6">6 Months</option><option value="0">Not Available</option></select></div>
         <div class="form-group"><label>Bank Statements Available</label><select id="edit_bankStmt"><option value="6">6 Months</option><option value="12">12 Months</option><option value="0">Not Available</option></select></div>
+        <div class="form-group">
+          <label>Payslip 1 (Latest - PDF)</label>
+          <input type="file" id="edit_doc_payslip1" accept=".pdf">
+        </div>
+        <div class="form-group">
+          <label>Payslip 2 (PDF)</label>
+          <input type="file" id="edit_doc_payslip2" accept=".pdf">
+        </div>
+        <div class="form-group">
+          <label>Payslip 3 (PDF)</label>
+          <input type="file" id="edit_doc_payslip3" accept=".pdf">
+        </div>
+        <div class="form-group full">
+          <label>Bank Statements (PDF files)</label>
+          <input type="file" id="edit_doc_bankstmt" accept=".pdf" multiple>
+          <small style="font-size:11px;color:#666;margin-top:4px;">Select up to 6 bank statement PDFs</small>
+        </div>
+        <div class="form-group">
+          <label>ITR Files (ZIP/PDF)</label>
+          <input type="file" id="edit_doc_itr" accept=".pdf,.zip" multiple>
+        </div>
         <div class="form-group full"><label>Additional Notes</label><textarea id="edit_notes" placeholder="Additional notes..."></textarea></div>
       </div>
     </div>
@@ -393,7 +425,7 @@
       </div>
       <div class="wa-copy-section">
         <p class="wa-copy-label">No WhatsApp? Copy the PDF link and share manually:</p>
-        <div class="wa-copy-row"><input type="text" id="waCopyLink" readonly><button class="wa-copy-btn" id="waCopyBtn" onclick="copyWaLink()">Copy</button></div>
+        <div class="wa-copy-row"><input type="text" id="waCopyLink" readonly><button class="wa-copy-btn" id="waCopyBtn" onclick="copyWaLink()">Copy</button><button class="wa-copy-btn" id="waDownloadBtn" style="margin-left:8px;display:none;" onclick="downloadWaPdf()">Download PDF</button></div>
       </div>
     </div>
   </div>
@@ -417,6 +449,7 @@
 let allRecords = [];
 let deleteTargetId = null;
 let waCurrentRecord = null;
+let waPdfUrl = null; // object URL for fetched PDF blob
 
 async function doLogout() {
   try { await fetch("/auth/logout", { method: "POST" }); } catch(e) {}
@@ -656,29 +689,48 @@ function openEdit(id) {
   document.getElementById("edit_bank").value           = d.bank || "";
   document.getElementById("edit_payslips").value       = d.payslips || "3";
   document.getElementById("edit_bankStmt").value       = d.bankStmt || "6";
+  // Clear file inputs when opening edit modal
+  ["edit_doc_payslip1","edit_doc_payslip2","edit_doc_payslip3","edit_doc_bankstmt","edit_doc_itr"].forEach(id=>{const el=document.getElementById(id); if(el) el.value = "";});
   document.getElementById("edit_notes").value          = d.notes || "";
   document.getElementById("editModal").classList.add("show");
 }
 async function saveEdit() {
   const id = document.getElementById("edit_recordId").value;
-  const payload = {
-    employmentType: document.getElementById("edit_employmentType").value.trim(),
-    loanAmount:     document.getElementById("edit_loanAmount").value.trim(),
-    loanType:       document.getElementById("edit_loanType").value.trim(),
-    cibil:          document.getElementById("edit_cibil").value.trim(),
-    income:         document.getElementById("edit_income").value.trim(),
-    bank:           document.getElementById("edit_bank").value.trim(),
-    payslips:       document.getElementById("edit_payslips").value,
-    bankStmt:       document.getElementById("edit_bankStmt").value,
-    notes:          document.getElementById("edit_notes").value.trim()
+  const employmentType = document.getElementById("edit_employmentType").value.trim();
+  const loanAmount     = document.getElementById("edit_loanAmount").value.trim();
+  const loanType       = document.getElementById("edit_loanType").value.trim();
+  if (!employmentType || !loanAmount || !loanType) { showToast("Employment Type, Loan Amount and Loan Type are required","error"); return; }
+
+  const fd = new FormData();
+  fd.append("employmentType", employmentType);
+  fd.append("loanAmount", loanAmount);
+  fd.append("loanType", loanType);
+  fd.append("cibil", document.getElementById("edit_cibil").value.trim());
+  fd.append("income", document.getElementById("edit_income").value.trim());
+  fd.append("bank", document.getElementById("edit_bank").value.trim());
+  fd.append("payslips", document.getElementById("edit_payslips").value);
+  fd.append("bankStmt", document.getElementById("edit_bankStmt").value);
+  fd.append("notes", document.getElementById("edit_notes").value.trim());
+
+  // Attach files if provided
+  const addIfFile = (elId, fieldName, multi=false) => {
+    const el = document.getElementById(elId);
+    if (!el || !el.files) return;
+    if (multi) Array.from(el.files).forEach(f => fd.append(fieldName, f));
+    else if (el.files[0]) fd.append(fieldName, el.files[0]);
   };
-  if (!payload.employmentType || !payload.loanAmount || !payload.loanType) { showToast("Employment Type, Loan Amount and Loan Type are required","error"); return; }
+  addIfFile('edit_doc_payslip1','payslip1');
+  addIfFile('edit_doc_payslip2','payslip2');
+  addIfFile('edit_doc_payslip3','payslip3');
+  addIfFile('edit_doc_bankstmt','bankFiles', true);
+  addIfFile('edit_doc_itr','itrFiles', true);
+
   try {
-    const res  = await fetch(`/api/banker-requirements/${id}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+    const res = await fetch(`/api/banker-requirements/${id}`, { method: 'PUT', body: fd });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Update failed");
-    closeModal("editModal"); showToast("✅ Updated successfully!","success"); loadRecords();
-  } catch (err) { showToast("❌ " + err.message,"error"); }
+    if (!res.ok) throw new Error(data.error || 'Update failed');
+    closeModal('editModal'); showToast('✅ Updated successfully!','success'); loadRecords();
+  } catch (err) { showToast('❌ ' + err.message,'error'); }
 }
 
 function openWaModal(id) {
@@ -689,10 +741,22 @@ function openWaModal(id) {
   document.getElementById("waPhoneInput").classList.remove("error");
   document.getElementById("waErrorMsg").classList.remove("show");
   const pdfUrl = `${location.origin}/api/banker-requirements/${id}/pdf`;
-  document.getElementById("waCopyLink").value = pdfUrl;
-  document.getElementById("waCopyBtn").textContent = "Copy";
-  document.getElementById("waCopyBtn").classList.remove("copied");
-  document.getElementById("waModal").classList.add("show");
+  // Try to fetch PDF as blob so user can download/open it directly (no hyperlink)
+  fetch(pdfUrl, { credentials: 'include' }).then(r => {
+    if (!r.ok) throw new Error('Could not fetch PDF');
+    return r.blob();
+  }).then(b => {
+    if (waPdfUrl) URL.revokeObjectURL(waPdfUrl);
+    waPdfUrl = URL.createObjectURL(b);
+    document.getElementById("waCopyLink").value = `PDF ready: banker-${waCurrentRecord.customerId}.pdf`;
+    document.getElementById("waCopyBtn").textContent = "Copy";
+    document.getElementById("waCopyBtn").classList.remove("copied");
+    const dl = document.getElementById('waDownloadBtn'); if (dl) { dl.style.display = 'inline-block'; }
+  }).catch(() => {
+    // fallback to link when fetch fails (e.g., auth issue)
+    document.getElementById("waCopyLink").value = pdfUrl;
+    const dl = document.getElementById('waDownloadBtn'); if (dl) { dl.style.display = 'none'; }
+  }).finally(() => document.getElementById("waModal").classList.add("show"));
 }
 function onPhoneInput() { document.getElementById("waPhoneInput").classList.remove("error"); document.getElementById("waErrorMsg").classList.remove("show"); }
 function getCleanPhone() {
@@ -708,9 +772,11 @@ function sendViaWhatsApp() {
   if (!phone) { document.getElementById("waPhoneInput").classList.add("error"); document.getElementById("waErrorMsg").classList.add("show"); return; }
   if (!waCurrentRecord) return;
   const d = waCurrentRecord.data || {};
-  const msg = encodeURIComponent(`Hello, please find your banker requirement details below:\n\nLoan Type: ${loanLabel(d.loanType)}\nLoan Amount: ${d.loanAmount||"—"}\nEmployment: ${d.employmentType==="salaried"?"Salaried":"Self Employed"}\nCIBIL: ${d.cibil||"—"}\n\nRequirement PDF: ${location.origin}/api/banker-requirements/${waCurrentRecord._id}/pdf`);
+  // Note: WhatsApp web doesn't support attaching files via wa.me link.
+  // We'll open the chat with a text message and the user can attach the downloaded PDF.
+  const msg = encodeURIComponent(`Hello, please find your banker requirement details below:\n\nLoan Type: ${loanLabel(d.loanType)}\nLoan Amount: ${d.loanAmount||"—"}\nEmployment: ${d.employmentType==="salaried"?"Salaried":"Self Employed"}\nCIBIL: ${d.cibil||"—"}`);
   window.open(`https://wa.me/${phone}?text=${msg}`,"_blank");
-  closeModal("waModal"); showToast("✅ Opening WhatsApp...","success");
+  closeModal("waModal"); showToast("✅ Opening WhatsApp... (attach PDF manually)","success");
 }
 function sendViaSMS() {
   const phone = getCleanPhone();
@@ -720,8 +786,16 @@ function sendViaSMS() {
   closeModal("waModal"); showToast("✅ Opening SMS...","success");
 }
 function copyWaLink() {
-  const link = document.getElementById("waCopyLink").value;
-  navigator.clipboard.writeText(link).then(()=>{const btn=document.getElementById("waCopyBtn");btn.textContent="Copied!";btn.classList.add("copied");showToast("✅ Link copied!","success");}).catch(()=>{const ta=document.createElement("textarea");ta.value=link;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);const btn=document.getElementById("waCopyBtn");btn.textContent="Copied!";btn.classList.add("copied");});
+  const val = document.getElementById("waCopyLink").value;
+  navigator.clipboard.writeText(val).then(()=>{const btn=document.getElementById("waCopyBtn");btn.textContent="Copied!";btn.classList.add("copied");showToast("✅ Copied!","success");}).catch(()=>{const ta=document.createElement("textarea");ta.value=val;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);const btn=document.getElementById("waCopyBtn");btn.textContent="Copied!";btn.classList.add("copied");});
+}
+
+function downloadWaPdf() {
+  if (!waPdfUrl) { showToast('PDF not ready','error'); return; }
+  const a = document.createElement('a');
+  a.href = waPdfUrl;
+  a.download = `banker-${waCurrentRecord.customerId}.pdf`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
 function askDelete(id, customerId) {
@@ -739,7 +813,14 @@ async function confirmDelete() {
   closeModal("deleteModal"); deleteTargetId = null;
 }
 
-function closeModal(id) { document.getElementById(id).classList.remove("show"); }
+function closeModal(id) {
+  document.getElementById(id).classList.remove("show");
+  if (id === 'waModal') {
+    if (waPdfUrl) { URL.revokeObjectURL(waPdfUrl); waPdfUrl = null; }
+    const dl = document.getElementById('waDownloadBtn'); if (dl) dl.style.display = 'none';
+    const inp = document.getElementById('waCopyLink'); if (inp) inp.value = '';
+  }
+}
 function showToast(msg, type="") { const t=document.getElementById("toast"); t.textContent=msg; t.className="toast show"+(type?` toast-${type}`:""); setTimeout(()=>{t.className="toast";},3000); }
 
 loadRecords();

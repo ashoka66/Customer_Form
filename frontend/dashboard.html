@@ -1873,6 +1873,21 @@
 
 <body>
 
+<!--
+  Lead Dashboard page
+
+  Execution / interaction flow:
+  1. Static HTML/CSS render for dashboard and summary modules.
+  2. Client-side JavaScript (below in this file) runs on load to fetch customers and stats:
+     - Calls `/customers` to list recent customers.
+     - Calls other APIs for exports and detail actions (download, open edit form).
+  3. The "New Customer" button opens the overlay form which posts to the server to create or update customers.
+
+  Notes:
+  - Search, filtering and per-customer actions are implemented in inline scripts further down this file.
+  - Look for `fetch` calls in the bottom half of the file to find exact API usage.
+-->
+
   <!-- ── HEADER ──────────────────────────────────────────── -->
   <div class="header">
     <h1>

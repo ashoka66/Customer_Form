@@ -84,6 +84,20 @@
 </head>
 <body>
 
+<!--
+  Customer Profile Form (PL / BL / HL etc.)
+
+  Execution / interaction flow:
+  1. Page renders the customer form and its various conditional sections (renewal, HL/LAP, documents, etc.).
+  2. Client-side scripts (later in this file) manage form state, autosave, file uploads and submit behavior.
+  3. On submit, the form posts to the server endpoints (in `server.js`) which create/update Customer, BankerRequirement and PropertyRequirement records.
+  4. After successful save the page may show preview/download links or redirect to the dashboard depending on user actions.
+
+  Notes:
+  - Look for `fetch` or `form.submit` handlers in the script area to find the exact API endpoints used.
+  - The page contains both front and back sides of a flip-card; toggling is handled in the scripts below.
+-->
+
 <div class="flip-container">
   <div class="flip-card" id="flipCard">
 

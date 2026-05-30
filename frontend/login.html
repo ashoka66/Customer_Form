@@ -209,6 +209,17 @@
 </head>
 <body>
 
+<!--
+  Login page
+
+  Execution flow:
+  1. Static login form rendered.
+  2. Client JS (at the end of the file) handles `doLogin()` which sends credentials to `/auth/login`.
+  3. On success, the user is redirected to `/dashboard`; on failure an error is shown in `#errorBox`.
+
+  Note: Passwords are sent over JSON to the backend; the backend checks `User` model via `comparePassword`.
+-->
+
   <div class="login-wrapper">
 
     <!-- LOGO -->
