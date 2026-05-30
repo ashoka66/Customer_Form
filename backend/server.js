@@ -42,7 +42,7 @@ const SHEET_ID = process.env.GOOGLE_SHEET_ID;
 const session      = require("express-session");
 const MongoStore = require("connect-mongo")(session);
 const bcrypt       = require("bcryptjs");
-const User         = require("./models/User");
+const User         = require("./models/user");
 
 app.use(cors({
 
