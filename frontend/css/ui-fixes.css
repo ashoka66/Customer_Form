@@ -1,0 +1,125 @@
+/* Shared UI fixes to harmonize header, sidebar, card grid and spacing across pages */
+:root{
+  --primary-teal:#329A9A;
+  --primary-dark:#0a2a55;
+  --accent:#1456a0;
+  --bg:#f0f4f8;
+  --card-bg: linear-gradient(145deg,#ffffff,#f8fbff);
+  --max-width:1180px;
+}
+body{background:var(--bg);font-family:Inter, 'Segoe UI', Arial, sans-serif}
+.header{min-height:86px;padding:16px 22px;background:var(--primary-teal);box-shadow:none;padding-left:72px}
+.header h1 img{height:42px;object-fit:contain}
+.header-right{margin-left:auto;gap:12px}
+
+/* Left sidebar (hamburger) styling — floating overlay on mobile, fixed small panel on desktop */
+/* Sidebar: hidden by default and opens on toggle */
+.app-sidebar{position:fixed;left:-320px;top:0;bottom:0;width:260px;background:#ffffff;box-shadow:2px 0 18px rgba(0,0,0,0.08);z-index:105;transition:left .22s ease}
+.app-sidebar.open{left:0}
+.app-sidebar .brand{padding:18px 20px;background:linear-gradient(90deg,var(--primary-teal),#2b8b88);color:#fff}
+.app-sidebar .brand-admin{display:flex;align-items:center;gap:12px;padding:14px}
+.app-sidebar .brand-admin .admin-icon{width:44px;height:44px;border-radius:50%;background:#fff;color:var(--primary-teal);display:flex;align-items:center;justify-content:center;font-weight:800}
+.app-sidebar .brand-admin .admin-text{color:var(--primary-dark)}
+.app-sidebar .brand-admin .admin-type{font-size:15px;font-weight:800;color:#fff}
+.app-sidebar .brand-admin .admin-role{font-size:12px;color:rgba(255,255,255,0.85);text-transform:lowercase;margin-top:2px}
+.app-sidebar .menu{padding:12px 16px;display:flex;flex-direction:column;gap:6px}
+.app-sidebar .menu a{display:block;padding:12px 14px;border-radius:10px;color:var(--primary-dark);text-decoration:none;background:transparent;border:0;font-weight:600}
+.app-sidebar .menu a:hover{background:linear-gradient(90deg,#f3fbfb,#eef7f6)}
+.app-sidebar .menu a.active{background:linear-gradient(90deg,#e6fbf9,#dff3f1);color:var(--primary-dark);font-weight:800}
+
+/* Make sidebar links look like clear buttons with icons */
+.app-sidebar .menu a .icon{display:inline-flex;width:20px;align-items:center;justify-content:center;margin-right:8px}
+
+/* Content container alignment to account for sidebar */
+.main-container{margin-left:0;max-width:var(--max-width);padding:18px 28px}
+
+/* Card grid adjustments */
+/* REPLACE WITH */
+/* REPLACE WITH */
+.grid {
+  padding: 24px 30px 45px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 220px));
+  column-gap: 12px;
+  row-gap: 20px;
+  align-items: stretch;
+  justify-content: start;
+}
+.card{background:var(--card-bg);border-radius:12px;padding:12px;border:1px solid rgba(10,42,85,0.05);box-shadow:none}
+.card .customer-id{font-size:13px;padding:6px 10px}
+.card .customer-name{font-size:16px}
+.card .card-actions{display:flex;gap:8px;margin-top:10px}
+
+/* Small card variant for dashboard */
+.small-card{padding:12px;border-radius:12px;display:flex;flex-direction:column;gap:8px;align-items:stretch;background:linear-gradient(145deg,#fff,#fbfeff);border:1px solid rgba(10,42,85,0.03)}
+.small-card .card-top{display:flex;align-items:center;gap:6px}
+.avatar{width:48px;height:48px;border-radius:50%;background:var(--primary-teal);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px}
+.name-block{display:flex;flex-direction:column;margin-left:6px}
+.name-block .customer-name{font-size:16px;color:var(--primary-dark);font-weight:800;margin:0;line-height:1}
+.cust-id{font-size:12px;color:var(--primary-teal);margin-top:4px}
+.phone-row{display:flex;align-items:center;gap:10px;font-size:14px;color:#35424a;margin-top:6px}
+.phone-row i{font-size:20px;color:#1f2b30}
+.loan-badge{margin-top:6px;background:#fff6f2;color:#c46b49;padding:6px 10px;border-radius:12px;font-size:12px;width:max-content}
+.small-actions{display:flex;gap:10px;justify-content:center;margin-top:8px}
+.small-actions .action{width:44px;height:44px;border-radius:12px;background:#fff;border:1px solid rgba(10,42,85,0.06);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(10,42,85,0.04);cursor:pointer}
+.small-actions .action i{font-size:18px;color:var(--primary-dark)}
+
+/* Responsive tweaks */
+@media (max-width:900px){
+  .app-sidebar{position:fixed;left:-320px;transition:left .22s}
+  .app-sidebar.open{left:0}
+  .main-container{margin-left:0;padding:12px}
+  .header{padding:12px}
+}
+
+/* Position the hamburger on the left side of the header */
+.header{position:relative}
+#sidebarToggle{position:absolute;left:18px;top:50%;transform:translateY(-50%);background:#fff;border-radius:8px;padding:8px 10px;border:0;box-shadow:0 6px 14px rgba(10,42,85,0.08);cursor:pointer;z-index:250;touch-action:manipulation}
+#sidebarToggle:focus{outline:2px solid rgba(50,154,154,0.22)}
+
+/* Adjust header logo placement so hamburger doesn't overlap */
+.header h1{margin:0 auto;max-width:820px;display:flex;align-items:center;justify-content:center}
+
+/* CARD styling to match mock */
+.card{background:linear-gradient(145deg,#ffffff,#f7fbff);border-radius:14px;padding:18px;border:1px solid rgba(10,42,85,0.04);box-shadow:0 8px 20px rgba(15,40,70,0.04);position:relative;overflow:visible}
+.card-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.card .customer-id{background:var(--primary-teal);color:#fff;padding:8px 14px;border-radius:20px;font-weight:800;font-size:13px;display:inline-block}
+.card .version-badge{background:#e9fbf6;color:#1b6b61;padding:6px 8px;border-radius:12px;font-size:12px;border:1px solid rgba(10,42,85,0.03)}
+.customer-name{font-weight:800;font-size:18px;color:var(--primary-dark);display:flex;gap:8px;align-items:center}
+.customer-name i{color:var(--primary-dark);opacity:0.9}
+.customer-info{margin-top:10px;display:flex;flex-direction:column;gap:12px}
+.info-item{display:flex;align-items:center;gap:12px;background:#fff;border-radius:10px;padding:12px;border:1px solid rgba(10,42,85,0.03)}
+.info-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(180deg,#fff,#f1f7f9);display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -6px 12px rgba(0,0,0,0.02)}
+
+/* small badge in top-right if needed */
+.card .small-badge{position:absolute;right:14px;top:14px;background:#eaf8f4;color:#0a6b55;padding:6px 8px;border-radius:12px;font-size:12px}
+
+/* Small utility */
+.center{display:flex;align-items:center;justify-content:center}
+
+/* User-provided compact card styles (exact) */
+.small-card{max-width:200px;width:100%;padding:8px;border-radius:10px;display:flex;flex-direction:column;background:#fff;border:1px solid #e2e8f0;box-shadow:0 2px 10px rgba(0,0,0,0.06)}
+.card-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.avatar{width:44px;height:44px;border-radius:10px;background:#3d7a6e;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;flex-shrink:0}
+.name-block{display:flex;flex-direction:column;gap:2px;margin-left:6px}
+.customer-name{font-size:16px;color:#1a2e35;font-weight:700;line-height:1.2}
+.cust-id{font-size:11px;color:#3d7a6e;font-weight:500}
+.phone-row{display:flex;align-items:center;gap:8px;font-size:13px;color:#2d3f46;margin-bottom:10px}
+.phone-row i{font-size:15px;color:#2d3f46}
+.loan-badge{display:inline-block;background:#fff8f0;color:#b05c2a;border:1px solid #f5d3b5;padding:4px 12px;border-radius:8px;font-size:12px;font-weight:500;width:fit-content;margin-bottom:12px}
+.divider{height:1px;background:#edf0f2;margin-bottom:10px}
+.small-actions{display:flex;gap:8px;justify-content:space-between}
+.small-actions .action{flex:1;height:38px;border-radius:10px;background:#f8fafb;border:1px solid #e4eaed;display:flex;align-items:center;justify-content:center;cursor:pointer;text-decoration:none}
+.small-actions .action i{font-size:16px;color:#2d3f46}
+
+/* Simple blue hover: only change color/background to blue (non-invasive) */
+.card .act-btn, .small-actions .action, .card .card-actions .act-btn, .small-card .action {
+  transition: background .12s ease, border-color .12s ease, color .12s ease;
+}
+.card .act-btn:hover, .small-actions .action:hover, .card .card-actions .act-btn:hover, .small-card .action:hover {
+  background: rgba(20,86,160,0.06); /* subtle blue tint */
+  border-color: rgba(20,86,160,0.18);
+}
+.card .act-btn:hover i, .small-actions .action:hover i, .card .card-actions .act-btn:hover i {
+  color: var(--accent);
+}

@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Customer Profile Form</title>
     <link rel="stylesheet" href="pl-bl.css">
+    <link rel="stylesheet" href="css/ui-fixes.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <style>
@@ -29,38 +30,32 @@
             display: flex; align-items: center; justify-content: center;
         }
         .success-popup-content {
-            background: white; border-radius: 14px; padding: 35px 40px;
-            max-width: 480px; width: 90%;
-            box-shadow: 0 15px 50px rgba(0,0,0,0.3); text-align: center;
-            animation: slideUpModal 0.3s ease;
+          background: white; border-radius: 10px; padding: 14px 16px;
+          max-width: 360px; width: auto;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.18); text-align: center;
+          animation: slideUpModal 0.22s ease;
         }
         .success-popup-content h3 {
-            color: #0a2a55; font-size: 20px; margin-bottom: 20px;
-            border-bottom: 2px solid #0a2a55; padding-bottom: 12px;
+          color: #0a2a55; font-size: 16px; margin: 6px 0 10px;
+          font-weight: 800;
         }
         .info-row {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 10px 0; border-bottom: 1px solid #eee;
-            font-size: 14px; text-align: left;
+          display: flex; justify-content: space-between; align-items: center;
+          padding: 6px 0; border-bottom: none;
+          font-size: 13px; text-align: left;
         }
-        .info-row span:first-child { font-weight: 600; color: #333; min-width: 120px; }
+        .info-row span:first-child { font-weight: 700; color: #333; min-width: 90px; }
         .info-row span:last-child  { color: #0a2a55; word-break: break-all; }
-        .edit-link { color: #0a2a55; font-weight: 700; text-decoration: underline; word-break: break-all; }
-        .copy-btn {
-            background: #e6ecf5; color: #0a2a55; border: none;
-            padding: 5px 12px; border-radius: 5px; cursor: pointer;
-            font-size: 12px; font-weight: 600; margin-left: 8px;
-        }
         .ok-btn {
-            margin-top: 20px; background: linear-gradient(135deg,#0a2a55,#08306b);
-            color: white; border: none; padding: 12px 40px; border-radius: 8px;
-            font-size: 15px; font-weight: 600; cursor: pointer; width: 100%;
+          margin-top: 12px; background: linear-gradient(135deg,#1f5bb5,#0d3a73);
+          color: white; border: none; padding: 8px 18px; border-radius: 8px;
+          font-size: 14px; font-weight: 700; cursor: pointer; display: inline-block;
         }
         .dash-btn {
-            margin-top: 10px; background: #e6ecf5;
-            color: #0a2a55; border: none; padding: 10px 40px; border-radius: 8px;
-            font-size: 14px; font-weight: 600; cursor: pointer; width: 100%;
-            text-decoration: none; display: block; text-align: center;
+          margin-top: 10px; background: transparent;
+          color: #1f5bb5; border: none; padding: 8px 18px; border-radius: 8px;
+          font-size: 13px; font-weight: 700; cursor: pointer; display: inline-block;
+          text-decoration: none;
         }
         #autoSaveIndicator {
             position: fixed; bottom: 20px; left: 20px;
@@ -97,6 +92,13 @@
   - Look for `fetch` or `form.submit` handlers in the script area to find the exact API endpoints used.
   - The page contains both front and back sides of a flip-card; toggling is handled in the scripts below.
 -->
+
+<!-- Header + Sidebar: add hamburger and app sidebar so Dashboard is available -->
+<div class="header">
+  <a href="/dashboard" class="btn-back" title="Back to Dashboard"><i class="bi bi-arrow-left"></i></a>
+  <h1><img src="/images/dashboard_header_img.png" alt="Dashboard"></h1>
+  <div class="header-right"></div>
+</div>
 
 <div class="flip-container">
   <div class="flip-card" id="flipCard">
@@ -526,6 +528,8 @@
   </div>
 </div>
 
+<!-- sidebar removed: no toggle script needed -->
+
 <!-- Auto-save indicator -->
 <div id="autoSaveIndicator">💾 Auto-saved</div>
 
@@ -943,21 +947,14 @@ function showSuccessPopup(customerId, hyperlink, version, message) {
     const popup = document.createElement("div");
     popup.className = "success-popup";
     popup.id        = "successPopup";
-    popup.innerHTML = `
-        <div class="success-popup-content">
-            <h3>✅ ${message === "Updated" ? "Updated Successfully!" : "Submitted Successfully!"}</h3>
-            <div class="info-row"><span>Customer ID</span><span>${customerId}</span></div>
-            <div class="info-row"><span>Version</span><span>v${version}</span></div>
-            <div class="info-row">
-                <span>Edit Link</span>
-                <span>
-                    <a class="edit-link" href="${hyperlink}" target="_blank">${hyperlink}</a>
-                    <button class="copy-btn" onclick="copyToClipboard('${hyperlink}')">Copy</button>
-                </span>
-            </div>
-            <button class="ok-btn" onclick="document.getElementById('successPopup').remove()">OK — New Form</button>
-            <a href="/dashboard" class="dash-btn">Go to Dashboard</a>
-        </div>`;
+  popup.innerHTML = `
+    <div class="success-popup-content">
+      <h3>✅ ${message === "Updated" ? "Updated Successfully!" : "Submitted Successfully!"}</h3>
+      <div class="info-row"><span>Customer ID</span><span>${customerId}</span></div>
+      <div class="info-row"><span>Version</span><span>v${version}</span></div>
+      <button class="ok-btn" onclick="document.getElementById('successPopup').remove()">OK</button>
+      <a href="/dashboard" class="dash-btn">Go to Dashboard</a>
+    </div>`;
     document.body.appendChild(popup);
 }
 
