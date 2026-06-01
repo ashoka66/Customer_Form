@@ -24,13 +24,15 @@ const mongoose = require("mongoose");
 const multer   = require("multer");
 const path     = require("path");
 const fs       = require("fs");
+const os       = require("os");
+const http     = require("http");
 const cors     = require("cors");
 const ExcelJS  = require("exceljs");
 const archiver = require("archiver");
 
 const app      = express();
 const PORT     = process.env.PORT     || 5000;
-const BASE_URL = (process.env.BASE_URL || `http://localhost:${PORT}`).replace(/\/$/, "");
+let BASE_URL   = (process.env.BASE_URL || `http://localhost:${PORT}`).replace(/\/$/, "");
 const FRONTEND = path.join(__dirname, "../frontend");
 const EXCEL_PATH = path.join(__dirname, "customers.xlsx");
 const { google } = require("googleapis");
@@ -739,7 +741,44 @@ mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
     console.log(" MongoDB connected");
-    app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
+
+    // Try to detect EC2 public hostname / IP via instance metadata
+    const fetchMetadata = (metaPath) => new Promise(resolve => {
+      const req = http.get(`http://169.254.169.254/latest/meta-data/${metaPath}`, { timeout: 1000 }, res => {
+        if (res.statusCode !== 200) return resolve(null);
+        let data = '';
+        res.on('data', c => data += c);
+        res.on('end', () => resolve(data));
+      });
+      req.on('error', () => resolve(null));
+      req.on('timeout', () => { req.destroy(); resolve(null); });
+    });
+
+    const detectHost = async () => {
+      try {
+        const pubHost = await fetchMetadata('public-hostname');
+        if (pubHost) return pubHost;
+        const pubIp = await fetchMetadata('public-ipv4');
+        if (pubIp) return pubIp;
+      } catch (e) {
+        // ignore and fallback
+      }
+      // Fallback: pick first non-internal IPv4
+      const nets = os.networkInterfaces();
+      for (const name of Object.keys(nets)) {
+        for (const net of nets[name]) {
+          if (net.family === 'IPv4' && !net.internal) return net.address;
+        }
+      }
+      return 'localhost';
+    };
+
+    detectHost().then(host => {
+      BASE_URL = (process.env.BASE_URL || `http://${host}:${PORT}`).replace(/\/$/, "");
+      app.listen(PORT, () => console.log(`Server running at ${BASE_URL}`));
+    }).catch(() => {
+      app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
+    });
   })
   .catch(err => { console.error(" MongoDB error:", err.message); process.exit(1); });
 
