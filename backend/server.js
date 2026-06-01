@@ -370,6 +370,20 @@ app.get("/api/banker-requirements", requireAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ── GET CUSTOMER BY ID ──
+// Returns the customer document for a given customerId (used by frontends
+// to determine if a banker requirement should treat fields as coming from
+// the main customer form). Protected: requireAuth.
+app.get('/api/customers/:customerId', requireAuth, async (req, res) => {
+  try {
+    const customer = await Customer.findOne({ customerId: req.params.customerId });
+    if (!customer) return res.status(404).json({ error: 'Not found' });
+    res.json({ customer });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── CREATE ──
 app.post("/api/banker-requirements", requireAuth, (req, res, next) => {
   uploadFields(req, res, err => { if (err) return res.status(400).json({ error: err.message }); next(); });
