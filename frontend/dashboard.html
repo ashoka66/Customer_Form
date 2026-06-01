@@ -1904,6 +1904,7 @@
       <img src="./images/dashboard_header_img.png" alt="Dashboard">
     </h1>
     <div class="header-right">
+      <a id="superAdminBtn" href="/admin-manage" style="display:none;margin-left:10px;padding:8px 12px;background:linear-gradient(135deg,#0a2a55,#1456a0);color:#fff;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px;">Admin Panel</a>
     </div>
   </div>
 
@@ -1921,12 +1922,12 @@
       <a href="/property-requirement"><i class="icon bi bi-building"></i> Property Req.</a>
       <a href="/banker-requirement"><i class="icon bi bi-bank2"></i> Banker Req.</a>
       <hr/>
-      <a href="/download-googlesheet"><i class="icon bi bi-file-earmark-arrow-down-fill"></i> Google Sheet</a>
+      <a href="/download-googlesheet" target="_blank" rel="noopener noreferrer"><i class="icon bi bi-file-earmark-arrow-down-fill"></i> Google Sheet</a>
       <a href="#" onclick="doLogout(); return false;"><i class="icon bi bi-box-arrow-right"></i> Logout</a>
       <a href="#" onclick="openFormOverlay(); return false;"><i class="icon bi bi-plus-lg"></i> New Customer</a>
       <hr/>
       <a href="/profile" onclick="event.preventDefault(); if(typeof openProfileModal==='function'){ openProfileModal(event); } else { window.location='/profile'; }"><i class="icon bi bi-person-circle"></i> My Profile</a>
-      <a href="/admin-manage"><i class="icon bi bi-shield-lock-fill"></i> Admin Panel</a>
+      <a href="/admin-manage" id="adminPanelLink" style="display:none;"><i class="icon bi bi-shield-lock-fill"></i> Admin Panel</a>
     </div>
   </div>
 
@@ -2601,9 +2602,15 @@ async function openProfileModal(e) {
   try {
     const res  = await fetch("/auth/me");
     const data = await res.json();
+    // show super admin module card
     if (data.user?.role === "superadmin") {
-      document.getElementById("superAdminCard").style.display = "flex";
+      const sac = document.getElementById("superAdminCard"); if (sac) sac.style.display = "flex";
+      const link = document.getElementById('adminPanelLink'); if (link) link.style.display = 'block';
+      const btn  = document.getElementById('superAdminBtn'); if (btn) btn.style.display = 'inline-block';
     }
+    // set displayed admin role text
+    const roleEl = document.querySelector('.app-sidebar .admin-role');
+    if (roleEl) { roleEl.textContent = data.user?.role === 'superadmin' ? 'super admin' : (data.user?.role || 'admin'); }
   } catch {}
 })();
 

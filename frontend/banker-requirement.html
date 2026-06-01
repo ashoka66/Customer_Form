@@ -199,12 +199,22 @@
     <a href="/banker-requirement" class="active">Banker Req.</a>
     <hr/>
     <a href="/profile" onclick="event.preventDefault(); if(typeof openProfileModal==='function'){ openProfileModal(event); } else { window.location='/profile'; }">My Profile</a>
-    <a href="/admin-manage">Admin Panel</a>
+    <a href="/admin-manage" id="adminPanelLink" style="display:none;">Admin Panel</a>
     
     <hr/>
     <a href="#" onclick="doLogout(); return false;"><i class="icon bi bi-box-arrow-right"></i> Logout</a>
   </div>
 </div>
+
+  <script>
+    (async ()=>{
+      try{
+        const r = await fetch('/auth/me'); const d = await r.json();
+        if(d.user?.role === 'superadmin'){ const l=document.getElementById('adminPanelLink'); if(l) l.style.display='block'; }
+        const roleEl = document.querySelector('.app-sidebar .admin-role'); if(roleEl) roleEl.textContent = d.user?.role === 'superadmin' ? 'super admin' : (d.user?.role || 'admin');
+      }catch(e){}
+    })();
+  </script>
 
 <div class="page-wrap">
   <div class="page-title-row">
@@ -286,26 +296,36 @@
           <label>Bank Name (preferred)</label>
           <input type="text" id="nc_bank" placeholder="e.g. SBI, HDFC">
         </div>
-        <div class="form-group">
-          <label>Payslips Available</label>
-          <select id="nc_payslips">
-            <option value="3">3 Months</option>
-            <option value="6">6 Months</option>
-            <option value="0">Not Available</option>
-          </select>
+        <!-- payslips/patterns are shown conditionally based on employment type -->
+        <div id="nc_salaried_fields">
+          <div class="form-group">
+            <label>Payslips</label>
+            <select id="nc_payslips">
+              <option value="3">3 Months</option>
+            </select>
+          </div>
+        </div>
+        <div id="nc_self_fields" style="display:none;">
+          <div class="form-group">
+            <label>ITR Years</label>
+            <select id="nc_itrYears">
+              <option value="3">Last 3 Years</option>
+            </select>
+          </div>
         </div>
         <div class="form-group">
-          <label>Bank Statements Available</label>
+          <label>Bank Statements</label>
           <select id="nc_bankStmt">
             <option value="6">6 Months</option>
             <option value="12">12 Months</option>
-            <option value="0">Not Available</option>
           </select>
         </div>
         <div class="form-group full">
           <label>Additional Notes</label>
           <textarea id="nc_notes" placeholder="Any specific banker requirements, preferred banks, or notes..."></textarea>
         </div>
+
+        
 
         <!-- DOCUMENT UPLOADS -->
         <hr class="section-divider">
@@ -315,25 +335,32 @@
           <label><i class="bi bi-file-earmark-text" style="color:#1456a0;margin-right:4px;"></i>CIBIL Report</label>
           <input type="file" id="nc_doc_cibil" accept=".pdf,.jpg,.jpeg,.png">
         </div>
-        <div class="form-group">
-          <label><i class="bi bi-receipt" style="color:#1456a0;margin-right:4px;"></i>Payslip 1 (Latest - PDF)</label>
-          <input type="file" id="nc_doc_payslip1" accept=".pdf" required>
-          <small style="font-size:11px;color:#666;margin-top:4px;">Upload latest payslip PDF</small>
+        <div id="nc_payslip_files" style="display:none;">
+          <div class="form-group">
+            <label><i class="bi bi-receipt" style="color:#1456a0;margin-right:4px;"></i>Payslip 1 (Latest - PDF)</label>
+            <input type="file" id="nc_doc_payslip1" accept=".pdf">
+            <small id="nc_payslip_note" style="font-size:11px;color:#666;margin-top:4px;">Upload 3 payslip PDFs</small>
+          </div>
+          <div class="form-group">
+            <label><i class="bi bi-receipt" style="color:#1456a0;margin-right:4px;"></i>Payslip 2 (PDF)</label>
+            <input type="file" id="nc_doc_payslip2" accept=".pdf">
+          </div>
+          <div class="form-group">
+            <label><i class="bi bi-receipt" style="color:#1456a0;margin-right:4px;"></i>Payslip 3 (PDF)</label>
+            <input type="file" id="nc_doc_payslip3" accept=".pdf">
+          </div>
         </div>
-        <div class="form-group">
-          <label><i class="bi bi-receipt" style="color:#1456a0;margin-right:4px;"></i>Payslip 2 (1-2 months old - PDF)</label>
-          <input type="file" id="nc_doc_payslip2" accept=".pdf">
-          <small style="font-size:11px;color:#666;margin-top:4px;">Upload payslip PDF from 1-2 months ago</small>
+        <div id="nc_bank_files" style="display:none;" class="form-group full">
+          <label><i class="bi bi-bank" style="color:#1456a0;margin-right:4px;"></i>Bank Statements (PDF files)</label>
+          <input type="file" id="nc_doc_bankstmt" accept=".pdf" multiple>
+          <small id="nc_bank_note" style="font-size:11px;color:#666;margin-top:4px;">Select required bank statement PDFs (months depend on employment type)</small>
         </div>
-        <div class="form-group">
-          <label><i class="bi bi-receipt" style="color:#1456a0;margin-right:4px;"></i>Payslip 3 (2-3 months old - PDF)</label>
-          <input type="file" id="nc_doc_payslip3" accept=".pdf">
-          <small style="font-size:11px;color:#666;margin-top:4px;">Upload payslip PDF from 2-3 months ago</small>
-        </div>
-        <div class="form-group full">
-          <label><i class="bi bi-bank" style="color:#1456a0;margin-right:4px;"></i>Bank Statements (6 Months - PDF files)</label>
-          <input type="file" id="nc_doc_bankstmt" accept=".pdf" multiple required>
-          <small style="font-size:11px;color:#666;margin-top:4px;">Select up to 6 bank statement PDFs (one PDF per month, last 6 months)</small>
+        <div id="nc_itr_files" style="display:none;">
+          <div class="form-group">
+            <label><i class="bi bi-file-earmark-zip" style="color:#1456a0;margin-right:4px;"></i>ITR Files (ZIP/PDF)</label>
+            <input type="file" id="nc_doc_itr" accept=".pdf,.zip" multiple>
+            <small id="nc_itr_note" style="font-size:11px;color:#666;margin-top:4px;">Upload 3 ITR files (zipped or PDF)</small>
+          </div>
         </div>
         <div class="form-group">
           <label><i class="bi bi-file-earmark-spreadsheet" style="color:#1456a0;margin-right:4px;"></i>Form 16</label>
@@ -343,10 +370,7 @@
           <label><i class="bi bi-file-earmark-spreadsheet" style="color:#1456a0;margin-right:4px;"></i>Form 26AS</label>
           <input type="file" id="nc_doc_form26" accept=".pdf,.zip">
         </div>
-        <div class="form-group">
-          <label><i class="bi bi-file-earmark-zip" style="color:#1456a0;margin-right:4px;"></i>ITR Files (ZIP/PDF)</label>
-          <input type="file" id="nc_doc_itr" accept=".pdf,.zip" multiple>
-        </div>
+        
         <div class="form-group">
           <label><i class="bi bi-building" style="color:#1456a0;margin-right:4px;"></i>GST Documents</label>
           <input type="file" id="nc_doc_gst" accept=".pdf,.zip,.jpg,.png">
@@ -362,6 +386,26 @@
         <div class="form-group">
           <label><i class="bi bi-file-earmark-minus" style="color:#1456a0;margin-right:4px;"></i>Relieving Letter</label>
           <input type="file" id="nc_doc_relieving" accept=".pdf">
+        </div>
+        
+        <!-- CO-APPLICANT (moved to end) -->
+        <div class="form-group" style="grid-column:1/-1;">
+          <label style="font-weight:700;"><input type="checkbox" id="nc_hasCoapp" style="margin-right:8px;"> Add Co-applicant</label>
+        </div>
+
+        <div id="nc_coapp_section" style="display:none;border:1px dashed #e6eef6;padding:12px;border-radius:8px;grid-column:1/-1;margin-bottom:8px;">
+          <div class="section-label" style="margin-bottom:8px;"><i class="bi bi-people"></i> Co-applicant</div>
+          <div class="form-group"><label>Employment Type *</label><select id="co_employmentType"><option value="">Select</option><option value="salaried">Salaried</option><option value="selfEmployed">Self Employed</option></select></div>
+          <div class="form-group" id="co_salaried_fields" style="display:none;"><label>Payslips</label><select id="co_payslips"><option value="3">3 Months</option></select></div>
+          <div class="form-group" id="co_self_fields" style="display:none;"><label>ITR Years</label><select id="co_itrYears"><option value="3">Last 3 Years</option></select></div>
+          <div class="form-group"><label>Bank Statements</label><select id="co_bankStmt"><option value="6">6 Months</option><option value="12">12 Months</option></select></div>
+          <div id="co_payslip_files" style="display:none;">
+            <div class="form-group"><label>Payslip 1 (Latest - PDF)</label><input type="file" id="co_doc_payslip1" accept=".pdf"></div>
+            <div class="form-group"><label>Payslip 2 (PDF)</label><input type="file" id="co_doc_payslip2" accept=".pdf"></div>
+            <div class="form-group"><label>Payslip 3 (PDF)</label><input type="file" id="co_doc_payslip3" accept=".pdf"></div>
+          </div>
+          <div id="co_bank_files" style="display:none;" class="form-group full"><label>Bank Statements</label><input type="file" id="co_doc_bankstmt" accept=".pdf" multiple><small id="co_bank_note" style="font-size:11px;color:#666;margin-top:4px;">Select required bank statement PDFs (months depend on employment type)</small></div>
+          <div id="co_itr_files" style="display:none;" class="form-group"><label>ITR Files (ZIP/PDF)</label><input type="file" id="co_doc_itr" accept=".pdf,.zip" multiple><small id="co_itr_note" style="font-size:11px;color:#666;margin-top:4px;">Upload 3 ITR files (zipped or PDF)</small></div>
         </div>
       </div>
     </div>
@@ -415,6 +459,24 @@
         <div class="form-group">
           <label>ITR Files (ZIP/PDF)</label>
           <input type="file" id="edit_doc_itr" accept=".pdf,.zip" multiple>
+        </div>
+        <!-- Edit modal co-applicant -->
+        <div class="form-group" style="grid-column:1/-1;">
+          <label style="font-weight:700;"><input type="checkbox" id="edit_hasCoapp" style="margin-right:8px;"> Add Co-applicant</label>
+        </div>
+        <div id="edit_coapp_section" style="display:none;border:1px dashed #e6eef6;padding:12px;border-radius:8px;grid-column:1/-1;margin-bottom:8px;">
+          <div class="section-label" style="margin-bottom:8px;"><i class="bi bi-people"></i> Co-applicant</div>
+          <div class="form-group"><label>Employment Type *</label><select id="edit_co_employmentType"><option value="">Select</option><option value="salaried">Salaried</option><option value="selfEmployed">Self Employed</option></select></div>
+          <div class="form-group" id="edit_co_salaried_fields" style="display:none;"><label>Payslips</label><select id="edit_co_payslips"><option value="3">3 Months</option></select></div>
+          <div class="form-group" id="edit_co_self_fields" style="display:none;"><label>ITR Years</label><select id="edit_co_itrYears"><option value="3">Last 3 Years</option></select></div>
+          <div class="form-group"><label>Bank Statements</label><select id="edit_co_bankStmt"><option value="6">6 Months</option><option value="12">12 Months</option></select></div>
+          <div id="edit_co_payslip_files" style="display:none;">
+            <div class="form-group"><label>Payslip 1 (Latest - PDF)</label><input type="file" id="edit_co_doc_payslip1" accept=".pdf"></div>
+            <div class="form-group"><label>Payslip 2 (PDF)</label><input type="file" id="edit_co_doc_payslip2" accept=".pdf"></div>
+            <div class="form-group"><label>Payslip 3 (PDF)</label><input type="file" id="edit_co_doc_payslip3" accept=".pdf"></div>
+          </div>
+          <div id="edit_co_bank_files" style="display:none;" class="form-group full"><label>Bank Statements</label><input type="file" id="edit_co_doc_bankstmt" accept=".pdf" multiple><small id="edit_co_bank_note" style="font-size:11px;color:#666;margin-top:4px;">Select required bank statement PDFs (months depend on employment type)</small></div>
+          <div id="edit_co_itr_files" style="display:none;" class="form-group"><label>ITR Files (ZIP/PDF)</label><input type="file" id="edit_co_doc_itr" accept=".pdf,.zip" multiple><small id="edit_co_itr_note" style="font-size:11px;color:#666;margin-top:4px;">Upload 3 ITR files (zipped or PDF)</small></div>
         </div>
         <div class="form-group full"><label>Additional Notes</label><textarea id="edit_notes" placeholder="Additional notes..."></textarea></div>
       </div>
@@ -571,12 +633,185 @@ function openNewCustomerModal() {
   ["nc_doc_cibil","nc_doc_payslip1","nc_doc_payslip2","nc_doc_payslip3","nc_doc_bankstmt","nc_doc_form16","nc_doc_form26","nc_doc_itr","nc_doc_gst","nc_doc_offer","nc_doc_appointment","nc_doc_relieving"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
   document.getElementById("nc_employmentType").value = "";
   document.getElementById("nc_loanType").value       = "";
-  document.getElementById("nc_payslips").value       = "3";
-  document.getElementById("nc_bankStmt").value       = "6";
+  const pSel = document.getElementById("nc_payslips"); if(pSel) { pSel.innerHTML = '<option value="">Select</option>'; pSel.value = ""; }
+  const bSel = document.getElementById("nc_bankStmt"); if(bSel) { bSel.innerHTML = '<option value="">Select</option>'; bSel.value = ""; }
+  // reset co-applicant
+  const coChk = document.getElementById('nc_hasCoapp'); if(coChk) coChk.checked = false;
+  document.getElementById('nc_coapp_section').style.display = 'none';
+  ["co_employmentType","co_payslips","co_itrYears","co_bankStmt"].forEach(id=>{const el=document.getElementById(id); if(el) el.value = "";});
+  ["co_doc_payslip1","co_doc_payslip2","co_doc_payslip3","co_doc_bankstmt","co_doc_itr"].forEach(id=>{const el=document.getElementById(id); if(el) el.value = "";});
   document.getElementById("modalFormTitle").innerHTML = `<i class="bi bi-plus-circle" style="margin-right:7px;"></i>Add Customer — Banker Requirement`;
   document.getElementById("newCustomerModal").classList.add("show");
+  // initialize visibility
+  updateNewCustomerForm();
 }
 function closeNewCustomerModal() { document.getElementById("newCustomerModal").classList.remove("show"); }
+
+// Toggle form fields depending on employment type
+function updateNewCustomerForm() {
+  const t = document.getElementById('nc_employmentType')?.value;
+  const salariedBlock = document.getElementById('nc_salaried_fields');
+  const selfBlock = document.getElementById('nc_self_fields');
+  const payslipFiles = document.getElementById('nc_payslip_files');
+  const itrFiles = document.getElementById('nc_itr_files');
+  const bankFiles = document.getElementById('nc_bank_files');
+  const pSel = document.getElementById('nc_payslips');
+  const bSel = document.getElementById('nc_bankStmt');
+  const itrSel = document.getElementById('nc_itrYears');
+
+  if (!t) {
+    if (salariedBlock) salariedBlock.style.display = 'none';
+    if (selfBlock) selfBlock.style.display = 'none';
+    if (payslipFiles) payslipFiles.style.display = 'none';
+    if (itrFiles) itrFiles.style.display = 'none';
+    if (bankFiles) bankFiles.style.display = 'none';
+    if (pSel) { pSel.innerHTML = '<option value="">Select</option>'; pSel.value = ''; }
+    if (bSel) { bSel.innerHTML = '<option value="">Select</option>'; bSel.value = ''; }
+    if (itrSel) { itrSel.innerHTML = '<option value="">Select</option>'; itrSel.value = ''; }
+    ['nc_doc_payslip1','nc_doc_payslip2','nc_doc_payslip3'].forEach(id=>{const el=document.getElementById(id); if(el) el.required=false;});
+    return;
+  }
+
+  if (t === 'salaried') {
+    if (salariedBlock) salariedBlock.style.display = 'block';
+    if (selfBlock) selfBlock.style.display = 'none';
+    if (payslipFiles) payslipFiles.style.display = 'block';
+    if (itrFiles) itrFiles.style.display = 'none';
+    if (bankFiles) bankFiles.style.display = 'block';
+    if (pSel) { pSel.innerHTML = '<option value="3">3 Months</option>'; pSel.value = '3'; }
+    if (bSel) { bSel.innerHTML = '<option value="6">6 Months</option>'; bSel.value = '6'; }
+    ['nc_doc_payslip1','nc_doc_payslip2','nc_doc_payslip3'].forEach(id=>{const el=document.getElementById(id); if(el) el.required=true;});
+    const note = document.getElementById('nc_bank_note'); if(note) note.textContent = 'Upload exactly 6 bank statement PDFs (one per month)';
+    const pnote = document.getElementById('nc_payslip_note'); if(pnote) pnote.textContent = 'Upload 3 payslip PDFs';
+  } else if (t === 'selfEmployed') {
+    if (salariedBlock) salariedBlock.style.display = 'none';
+    if (selfBlock) selfBlock.style.display = 'block';
+    if (payslipFiles) payslipFiles.style.display = 'none';
+    if (itrFiles) itrFiles.style.display = 'block';
+    if (bankFiles) bankFiles.style.display = 'block';
+    if (itrSel) { itrSel.innerHTML = '<option value="3">Last 3 Years</option>'; itrSel.value = '3'; }
+    if (bSel) { bSel.innerHTML = '<option value="12">12 Months</option>'; bSel.value = '12'; }
+    ['nc_doc_payslip1','nc_doc_payslip2','nc_doc_payslip3'].forEach(id=>{const el=document.getElementById(id); if(el) el.required=false;});
+    const note = document.getElementById('nc_bank_note'); if(note) note.textContent = 'Upload exactly 12 bank statement PDFs (one per month)';
+    const inote = document.getElementById('nc_itr_note'); if(inote) inote.textContent = 'Upload 3 ITR files (zipped or PDF)';
+  }
+}
+
+function updateCoapplicantForm() {
+  const t = document.getElementById('co_employmentType')?.value;
+  const salariedBlock = document.getElementById('co_salaried_fields');
+  const selfBlock = document.getElementById('co_self_fields');
+  const payslipFiles = document.getElementById('co_payslip_files');
+  const itrFiles = document.getElementById('co_itr_files');
+  const bankFiles = document.getElementById('co_bank_files');
+  const pSel = document.getElementById('co_payslips');
+  const bSel = document.getElementById('co_bankStmt');
+  const itrSel = document.getElementById('co_itrYears');
+
+  if (!t) {
+    if (salariedBlock) salariedBlock.style.display = 'none';
+    if (selfBlock) selfBlock.style.display = 'none';
+    if (payslipFiles) payslipFiles.style.display = 'none';
+    if (itrFiles) itrFiles.style.display = 'none';
+    if (bankFiles) bankFiles.style.display = 'none';
+    if (pSel) { pSel.innerHTML = '<option value="">Select</option>'; pSel.value = ''; }
+    if (bSel) { bSel.innerHTML = '<option value="">Select</option>'; bSel.value = ''; }
+    if (itrSel) { itrSel.innerHTML = '<option value="">Select</option>'; itrSel.value = ''; }
+    return;
+  }
+  if (t === 'salaried') {
+    if (salariedBlock) salariedBlock.style.display = 'block';
+    if (selfBlock) selfBlock.style.display = 'none';
+    if (payslipFiles) payslipFiles.style.display = 'block';
+    if (itrFiles) itrFiles.style.display = 'none';
+    if (bankFiles) bankFiles.style.display = 'block';
+    if (pSel) { pSel.innerHTML = '<option value="3">3 Months</option>'; pSel.value = '3'; }
+    if (bSel) { bSel.innerHTML = '<option value="6">6 Months</option>'; bSel.value = '6'; }
+  } else if (t === 'selfEmployed') {
+    if (salariedBlock) salariedBlock.style.display = 'none';
+    if (selfBlock) selfBlock.style.display = 'block';
+    if (payslipFiles) payslipFiles.style.display = 'none';
+    if (itrFiles) itrFiles.style.display = 'block';
+    if (bankFiles) bankFiles.style.display = 'block';
+    if (itrSel) { itrSel.innerHTML = '<option value="3">Last 3 Years</option>'; itrSel.value = '3'; }
+    if (bSel) { bSel.innerHTML = '<option value="12">12 Months</option>'; bSel.value = '12'; }
+  }
+}
+
+// Edit modal update functions
+function updateEditForm() {
+  const t = document.getElementById('edit_employmentType')?.value;
+  const payslipFiles = document.getElementById('edit_co_payslip_files'); // not used here
+  const payslipNote = document.getElementById('edit_co_payslips');
+  const bankFiles = document.getElementById('edit_co_bank_files');
+  // show/hide bank/payslip/itr groups in edit modal based on selection
+  const payslipGroup = document.getElementById('edit_co_payslip_files');
+  const itrGroup = document.getElementById('edit_co_itr_files');
+  const bankGroup = document.getElementById('edit_co_bank_files');
+  const pSel = document.getElementById('edit_payslips');
+  const bSel = document.getElementById('edit_bankStmt');
+  if (!t) {
+    if (pSel) { pSel.innerHTML = '<option value="">Select</option>'; pSel.value = ''; }
+    if (bSel) { bSel.innerHTML = '<option value="">Select</option>'; bSel.value = ''; }
+    if (payslipGroup) payslipGroup.style.display = 'none';
+    if (itrGroup) itrGroup.style.display = 'none';
+    if (bankGroup) bankGroup.style.display = 'none';
+    return;
+  }
+  if (t === 'salaried') {
+    if (pSel) { pSel.innerHTML = '<option value="3">3 Months</option>'; pSel.value = '3'; }
+    if (bSel) { bSel.innerHTML = '<option value="6">6 Months</option>'; bSel.value = '6'; }
+    if (payslipGroup) payslipGroup.style.display = 'block';
+    if (itrGroup) itrGroup.style.display = 'none';
+    if (bankGroup) bankGroup.style.display = 'block';
+  } else if (t === 'selfEmployed') {
+    // edit modal doesn't have an ITR years select; keep ITR file input visible
+    if (bSel) { bSel.innerHTML = '<option value="12">12 Months</option>'; bSel.value = '12'; }
+    if (payslipGroup) payslipGroup.style.display = 'none';
+    if (itrGroup) itrGroup.style.display = 'block';
+    if (bankGroup) bankGroup.style.display = 'block';
+  }
+}
+
+function updateEditCoapplicantForm() {
+  const t = document.getElementById('edit_co_employmentType')?.value;
+  const salariedBlock = document.getElementById('edit_co_salaried_fields');
+  const selfBlock = document.getElementById('edit_co_self_fields');
+  const payslipFiles = document.getElementById('edit_co_payslip_files');
+  const itrFiles = document.getElementById('edit_co_itr_files');
+  const bankFiles = document.getElementById('edit_co_bank_files');
+  if (!t) {
+    if (salariedBlock) salariedBlock.style.display = 'none';
+    if (selfBlock) selfBlock.style.display = 'none';
+    if (payslipFiles) payslipFiles.style.display = 'none';
+    if (itrFiles) itrFiles.style.display = 'none';
+    if (bankFiles) bankFiles.style.display = 'none';
+    return;
+  }
+  if (t === 'salaried') {
+    if (salariedBlock) salariedBlock.style.display = 'block';
+    if (selfBlock) selfBlock.style.display = 'none';
+    if (payslipFiles) payslipFiles.style.display = 'block';
+    if (itrFiles) itrFiles.style.display = 'none';
+    if (bankFiles) bankFiles.style.display = 'block';
+  } else if (t === 'selfEmployed') {
+    if (salariedBlock) salariedBlock.style.display = 'none';
+    if (selfBlock) selfBlock.style.display = 'block';
+    if (payslipFiles) payslipFiles.style.display = 'none';
+    if (itrFiles) itrFiles.style.display = 'block';
+    if (bankFiles) bankFiles.style.display = 'block';
+  }
+}
+
+// Hook edit listeners
+document.getElementById('edit_employmentType')?.addEventListener('change', updateEditForm);
+document.getElementById('edit_co_employmentType')?.addEventListener('change', updateEditCoapplicantForm);
+document.getElementById('edit_hasCoapp')?.addEventListener('change', function(e){ document.getElementById('edit_coapp_section').style.display = e.target.checked ? 'block' : 'none'; });
+
+// Hook up change listeners
+document.getElementById('nc_employmentType')?.addEventListener('change', updateNewCustomerForm);
+document.getElementById('co_employmentType')?.addEventListener('change', updateCoapplicantForm);
+document.getElementById('nc_hasCoapp')?.addEventListener('change', function(e){ document.getElementById('nc_coapp_section').style.display = e.target.checked ? 'block' : 'none'; });
 
 async function saveNewCustomer() {
   const employmentType = document.getElementById("nc_employmentType").value.trim();
@@ -584,13 +819,23 @@ async function saveNewCustomer() {
   const loanType       = document.getElementById("nc_loanType").value.trim();
   if (!employmentType || !loanAmount || !loanType) { showToast("Please fill Employment Type, Loan Amount and Loan Type","error"); return; }
 
-  // Validate required files
-  const payslip1El = document.getElementById("nc_doc_payslip1");
-  if (!payslip1El || !payslip1El.files || !payslip1El.files[0]) { showToast("❌ Latest payslip (PDF) is required","error"); return; }
-  
+  // Conditional validation based on employment type (strict counts)
   const bankEl = document.getElementById("nc_doc_bankstmt");
-  if (!bankEl || !bankEl.files || !bankEl.files[0]) { showToast("❌ At least one bank statement PDF (6 months) is required","error"); return; }
-  if (bankEl.files.length > 6) { showToast("❌ Maximum 6 bank statement PDFs allowed","error"); return; }
+  if (!bankEl || !bankEl.files) { showToast("❌ Bank statement PDFs are required","error"); return; }
+
+  if (employmentType === 'salaried') {
+    // Require 3 payslips and exactly 6 bank statement PDFs
+    const pays = ['nc_doc_payslip1','nc_doc_payslip2','nc_doc_payslip3'].map(id=>document.getElementById(id));
+    if (pays.some(el=>!el || !el.files || !el.files[0])) { showToast('❌ Please upload 3 payslip PDFs for salaried applicants','error'); return; }
+    if (bankEl.files.length !== 6) { showToast('❌ Please upload exactly 6 bank statement PDFs for salaried applicants','error'); return; }
+  } else if (employmentType === 'selfEmployed') {
+    // Require 3 ITR files and exactly 12 bank statement PDFs
+    const itrEl = document.getElementById("nc_doc_itr");
+    if (!itrEl || !itrEl.files || itrEl.files.length !== 3) { showToast('❌ Please upload exactly 3 ITR files for self-employed applicants','error'); return; }
+    if (bankEl.files.length !== 12) { showToast('❌ Please upload exactly 12 bank statement PDFs for self-employed applicants','error'); return; }
+  } else {
+    showToast('❌ Employment Type required','error'); return;
+  }
 
   const fd = new FormData();
   const customerId = document.getElementById("nc_customerId").value.trim();
@@ -621,10 +866,33 @@ async function saveNewCustomer() {
 
   const bankStmtEl = document.getElementById("nc_doc_bankstmt");
   if (bankStmtEl && bankStmtEl.files.length) {
-    if (bankStmtEl.files.length > 6) { showToast("❌ Maximum 6 bank statement PDFs allowed","error"); return; }
+    const maxAllowed = (document.getElementById('nc_bankStmt')?.value === '12') ? 12 : 6;
+    if (bankStmtEl.files.length > maxAllowed) { showToast(`❌ Maximum ${maxAllowed} bank statement PDFs allowed`,`error`); return; }
     Array.from(bankStmtEl.files).forEach(f => fd.append("bankFiles", f));
   } else {
     showToast("❌ At least one bank statement PDF is required","error"); return;
+  }
+
+  // Co-applicant handling
+  const hasCo = document.getElementById('nc_hasCoapp')?.checked;
+  if (hasCo) {
+    const coType = document.getElementById('co_employmentType')?.value || '';
+    if (!coType) { showToast('❌ Co-applicant Employment Type required','error'); return; }
+    const co = { employmentType: coType, payslips: document.getElementById('co_payslips')?.value || '', bankStmt: document.getElementById('co_bankStmt')?.value || '', itrYears: document.getElementById('co_itrYears')?.value || '' };
+    // validate co files based on type
+    if (coType === 'salaried') {
+      const cPays = ['co_doc_payslip1','co_doc_payslip2','co_doc_payslip3'].map(id=>document.getElementById(id));
+      if (cPays.some(el=>!el || !el.files || !el.files[0])) { showToast('❌ Please upload 3 payslip PDFs for co-applicant','error'); return; }
+      const coBankEl = document.getElementById('co_doc_bankstmt'); if (!coBankEl || !coBankEl.files || coBankEl.files.length !== 6) { showToast('❌ Please upload exactly 6 bank statement PDFs for co-applicant','error'); return; }
+      Array.from(coBankEl.files).forEach(f=>fd.append('co_bankFiles', f));
+      cPays.forEach((el,idx)=>{ if(el && el.files && el.files[0]) fd.append(`co_payslip${idx+1}`, el.files[0]); });
+    } else if (coType === 'selfEmployed') {
+      const coItr = document.getElementById('co_doc_itr'); if (!coItr || !coItr.files || coItr.files.length !== 3) { showToast('❌ Please upload exactly 3 ITR files for co-applicant','error'); return; }
+      const coBankEl = document.getElementById('co_doc_bankstmt'); if (!coBankEl || !coBankEl.files || coBankEl.files.length !== 12) { showToast('❌ Please upload exactly 12 bank statement PDFs for co-applicant','error'); return; }
+      Array.from(coItr.files).forEach(f=>fd.append('co_itrFiles', f));
+      Array.from(coBankEl.files).forEach(f=>fd.append('co_bankFiles', f));
+    }
+    fd.append('coapplicant', JSON.stringify(co));
   }
 
   try {
@@ -695,13 +963,26 @@ function row(label, val) {
   return `<div class="detail-row"><span class="detail-label">${label}</span><span class="detail-value">${val || "-"}</span></div>`;
 }
 
-function openEdit(id) {
+async function openEdit(id) {
   const r = allRecords.find(x => x._id === id);
   if (!r) return;
   const d = r.data || {};
+  // try to fetch a customer record for this customerId to detect main-form origin
+  let customer = null;
+  try {
+    const resp = await fetch(`/api/customers/${r.customerId}`);
+    if (resp.ok) customer = (await resp.json()).customer;
+  } catch (e) { /* ignore fetch errors — fall back to existing markers */ }
   document.getElementById("edit_recordId").value       = id;
   document.getElementById("editModalTitle").textContent= `Edit — ${r.customerId}`;
-  document.getElementById("edit_employmentType").value = d.employmentType || "";
+  // If employmentType exists from main form, restrict options to that single value
+  const editEmp = document.getElementById("edit_employmentType");
+  if (d.employmentType) {
+    const label = d.employmentType === 'salaried' ? 'Salaried' : (d.employmentType === 'selfEmployed' ? 'Self Employed' : d.employmentType);
+    if (editEmp) { editEmp.innerHTML = `<option value="${d.employmentType}">${label}</option>`; editEmp.value = d.employmentType; }
+  } else {
+    if (editEmp) { editEmp.innerHTML = '<option value="">Select</option><option value="salaried">Salaried</option><option value="selfEmployed">Self Employed</option>'; editEmp.value = ''; }
+  }
   document.getElementById("edit_loanAmount").value     = d.loanAmount || "";
   document.getElementById("edit_loanType").value       = d.loanType || "";
   document.getElementById("edit_cibil").value          = d.cibil || "";
@@ -712,6 +993,50 @@ function openEdit(id) {
   // Clear file inputs when opening edit modal
   ["edit_doc_payslip1","edit_doc_payslip2","edit_doc_payslip3","edit_doc_bankstmt","edit_doc_itr"].forEach(id=>{const el=document.getElementById(id); if(el) el.value = "";});
   document.getElementById("edit_notes").value          = d.notes || "";
+  // determine if this record originated from main form (check customer and common markers)
+  const fromMain = !!(customer || r.fromMain || d.fromMain || d.from_dashboard || d.origin === 'main' || d.source === 'main' || d.linkedCustomer);
+  // track immutable fields (do not allow editing or overwriting)
+  const immutable = [];
+  if (fromMain) {
+    // list of simple fields that should be immutable when they have a meaningful value
+    // prefer values from `customer.latestData` when available
+    ['employmentType','loanAmount','loanType','cibil','income','bank','payslips','bankStmt','notes','customerId'].forEach(k=>{
+      const sourceVal = customer?.latestData?.[k] ?? d[k];
+      const v = sourceVal;
+      const hasValue = v !== undefined && v !== null && String(v).trim() !== '' && String(v).trim() !== '_' && String(v).trim() !== '-';
+      if (hasValue) immutable.push('edit_'+k);
+    });
+  }
+  // apply disabled state for immutable fields and for files present in r.files
+  window.currentEditFromMain = fromMain;
+  window.currentEditImmutableFields = immutable;
+  window.currentEditRecord = r;
+  immutable.forEach(id=>{ const el=document.getElementById(id); if(el) { el.disabled = true; el.classList.add('readonly-field'); } });
+  // disable file inputs if file already present in record files
+  if (fromMain) {
+    const filesMap = (customer && customer.files) ? (customer.files || {}) : (r.files || {});
+    const fileIdMap = { 'payslip1':'edit_doc_payslip1','payslip2':'edit_doc_payslip2','payslip3':'edit_doc_payslip3','form16':'edit_doc_form16','form26':'edit_doc_form26','gstFiles':'edit_doc_gst','offerLetter':'edit_doc_offer','appointmentLetter':'edit_doc_appointment','relievingLetter':'edit_doc_relieving' };
+    Object.keys(fileIdMap).forEach(key=>{ if (filesMap[key]) { const el=document.getElementById(fileIdMap[key]); if(el){ el.disabled=true; el.classList.add('readonly-field'); } } });
+    // bank and itr files mapping
+    if (filesMap.bankFiles && filesMap.bankFiles.length) { const el=document.getElementById('edit_doc_bankstmt'); if(el){ el.disabled=true; el.classList.add('readonly-field'); } }
+    if (filesMap.itrFiles && filesMap.itrFiles.length) { const el=document.getElementById('edit_doc_itr'); if(el){ el.disabled=true; el.classList.add('readonly-field'); } }
+  }
+  // co-applicant prefilling
+  const hasCo = d.coapplicant ? true : false;
+  const editHasCo = document.getElementById('edit_hasCoapp'); if(editHasCo) editHasCo.checked = !!hasCo;
+  const editCoSec = document.getElementById('edit_coapp_section'); if(editCoSec) editCoSec.style.display = hasCo ? 'block' : 'none';
+  if (hasCo) {
+    try {
+      const cd = typeof d.coapplicant === 'string' ? JSON.parse(d.coapplicant) : (d.coapplicant || {});
+      const coType = cd.employmentType || '';
+      const coEmpEl = document.getElementById('edit_co_employmentType'); if(coEmpEl){ if(coType){ coEmpEl.innerHTML = `<option value="${coType}">${coType==='salaried'?'Salaried':'Self Employed'}</option>`; coEmpEl.value = coType; } else { coEmpEl.value = ''; } }
+      const coPays = document.getElementById('edit_co_payslips'); if(coPays) coPays.value = cd.payslips || '';
+      const coItr = document.getElementById('edit_co_itrYears'); if(coItr) coItr.value = cd.itrYears || '';
+      const coBank = document.getElementById('edit_co_bankStmt'); if(coBank) coBank.value = cd.bankStmt || '';
+    } catch(e){}
+  }
+  // initialize visibility for edit modal
+  updateEditForm(); updateEditCoapplicantForm();
   document.getElementById("editModal").classList.add("show");
 }
 async function saveEdit() {
@@ -722,18 +1047,39 @@ async function saveEdit() {
   if (!employmentType || !loanAmount || !loanType) { showToast("Employment Type, Loan Amount and Loan Type are required","error"); return; }
 
   const fd = new FormData();
-  fd.append("employmentType", employmentType);
-  fd.append("loanAmount", loanAmount);
-  fd.append("loanType", loanType);
-  fd.append("cibil", document.getElementById("edit_cibil").value.trim());
-  fd.append("income", document.getElementById("edit_income").value.trim());
-  fd.append("bank", document.getElementById("edit_bank").value.trim());
-  fd.append("payslips", document.getElementById("edit_payslips").value);
-  fd.append("bankStmt", document.getElementById("edit_bankStmt").value);
-  fd.append("notes", document.getElementById("edit_notes").value.trim());
+  const imm = window.currentEditImmutableFields || [];
+  const isImmutable = id => imm.includes(id);
+  if (!isImmutable('edit_employmentType')) fd.append("employmentType", employmentType);
+  if (!isImmutable('edit_loanAmount')) fd.append("loanAmount", loanAmount);
+  if (!isImmutable('edit_loanType')) fd.append("loanType", loanType);
+  if (!isImmutable('edit_cibil')) fd.append("cibil", document.getElementById("edit_cibil").value.trim());
+  if (!isImmutable('edit_income')) fd.append("income", document.getElementById("edit_income").value.trim());
+  if (!isImmutable('edit_bank')) fd.append("bank", document.getElementById("edit_bank").value.trim());
+  if (!isImmutable('edit_payslips')) fd.append("payslips", document.getElementById("edit_payslips").value);
+  if (!isImmutable('edit_bankStmt')) fd.append("bankStmt", document.getElementById("edit_bankStmt").value);
+  if (!isImmutable('edit_notes')) fd.append("notes", document.getElementById("edit_notes").value.trim());
 
-  // Attach files if provided
+  // Conditional validation for edit (strict counts)
+  const bankEl = document.getElementById('edit_doc_bankstmt');
+  if (!bankEl || !bankEl.files) { showToast('❌ Bank statement PDFs are required','error'); return; }
+  if (employmentType === 'salaried') {
+    const pays = ['edit_doc_payslip1','edit_doc_payslip2','edit_doc_payslip3'].map(id=>document.getElementById(id));
+    if (pays.some(el=>!el || !el.files || !el.files[0])) { showToast('❌ Please upload 3 payslip PDFs for salaried applicants','error'); return; }
+    if (bankEl.files.length !== 6) { showToast('❌ Please upload exactly 6 bank statement PDFs for salaried applicants','error'); return; }
+  } else if (employmentType === 'selfEmployed') {
+    const itrEl = document.getElementById('edit_doc_itr');
+    if (!itrEl || !itrEl.files || itrEl.files.length !== 3) { showToast('❌ Please upload exactly 3 ITR files for self-employed applicants','error'); return; }
+    if (bankEl.files.length !== 12) { showToast('❌ Please upload exactly 12 bank statement PDFs for self-employed applicants','error'); return; }
+  }
+
+  // Append bank files (skip if bank file input is immutable)
+  if (!isImmutable('edit_doc_bankstmt')) {
+    if (bankEl && bankEl.files.length) Array.from(bankEl.files).forEach(f=>fd.append('bankFiles', f));
+  }
+
+  // Attach files if provided, skip immutable inputs
   const addIfFile = (elId, fieldName, multi=false) => {
+    if (isImmutable(elId)) return;
     const el = document.getElementById(elId);
     if (!el || !el.files) return;
     if (multi) Array.from(el.files).forEach(f => fd.append(fieldName, f));
@@ -742,8 +1088,28 @@ async function saveEdit() {
   addIfFile('edit_doc_payslip1','payslip1');
   addIfFile('edit_doc_payslip2','payslip2');
   addIfFile('edit_doc_payslip3','payslip3');
-  addIfFile('edit_doc_bankstmt','bankFiles', true);
   addIfFile('edit_doc_itr','itrFiles', true);
+
+  // Co-applicant handling in edit
+  const hasCo = document.getElementById('edit_hasCoapp')?.checked;
+  if (hasCo) {
+    const coType = document.getElementById('edit_co_employmentType')?.value || '';
+    if (!coType) { showToast('❌ Co-applicant Employment Type required','error'); return; }
+    const co = { employmentType: coType, payslips: document.getElementById('edit_co_payslips')?.value || '', bankStmt: document.getElementById('edit_co_bankStmt')?.value || '', itrYears: document.getElementById('edit_co_itrYears')?.value || '' };
+    if (coType === 'salaried') {
+      const cPays = ['edit_co_doc_payslip1','edit_co_doc_payslip2','edit_co_doc_payslip3'].map(id=>document.getElementById(id));
+      if (cPays.some(el=>!el || !el.files || !el.files[0])) { showToast('❌ Please upload 3 payslip PDFs for co-applicant','error'); return; }
+      const coBankEl = document.getElementById('edit_co_doc_bankstmt'); if (!coBankEl || !coBankEl.files || coBankEl.files.length !== 6) { showToast('❌ Please upload exactly 6 bank statement PDFs for co-applicant','error'); return; }
+      Array.from(coBankEl.files).forEach(f=>fd.append('co_bankFiles', f));
+      cPays.forEach((el,idx)=>{ if(el && el.files && el.files[0]) fd.append(`co_payslip${idx+1}`, el.files[0]); });
+    } else if (coType === 'selfEmployed') {
+      const coItr = document.getElementById('edit_co_doc_itr'); if (!coItr || !coItr.files || coItr.files.length !== 3) { showToast('❌ Please upload exactly 3 ITR files for co-applicant','error'); return; }
+      const coBankEl = document.getElementById('edit_co_doc_bankstmt'); if (!coBankEl || !coBankEl.files || coBankEl.files.length !== 12) { showToast('❌ Please upload exactly 12 bank statement PDFs for co-applicant','error'); return; }
+      Array.from(coItr.files).forEach(f=>fd.append('co_itrFiles', f));
+      Array.from(coBankEl.files).forEach(f=>fd.append('co_bankFiles', f));
+    }
+    fd.append('coapplicant', JSON.stringify(co));
+  }
 
   try {
     const res = await fetch(`/api/banker-requirements/${id}`, { method: 'PUT', body: fd });
@@ -752,6 +1118,7 @@ async function saveEdit() {
     closeModal('editModal'); showToast('✅ Updated successfully!','success'); loadRecords();
   } catch (err) { showToast('❌ ' + err.message,'error'); }
 }
+
 
 function openWaModal(id) {
   waCurrentRecord = allRecords.find(x => x._id === id);

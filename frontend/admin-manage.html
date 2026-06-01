@@ -199,12 +199,22 @@
     <a href="/banker-requirement">Banker Req.</a>
     <hr/>
     <a href="/profile" onclick="event.preventDefault(); if(typeof openProfileModal==='function'){ openProfileModal(event); } else { window.location='/profile'; }">My Profile</a>
-    <a href="/admin-manage" class="active">Admin Panel</a>
+    <a href="/admin-manage" id="adminPanelLink" class="active" style="display:none;">Admin Panel</a>
     <a href="/form">New Customer</a>
     <hr/>
     <a href="#" onclick="doLogout(); return false;"><i class="icon bi bi-box-arrow-right"></i> Logout</a>
   </div>
 </div>
+
+  <script>
+    (async ()=>{
+      try{
+        const r = await fetch('/auth/me'); const d = await r.json();
+        if(d.user?.role === 'superadmin'){ const l=document.getElementById('adminPanelLink'); if(l) l.style.display='block'; }
+        const roleEl = document.querySelector('.app-sidebar .admin-role'); if(roleEl) roleEl.textContent = d.user?.role === 'superadmin' ? 'super admin' : (d.user?.role || 'admin');
+      }catch(e){}
+    })();
+  </script>
 
 <div class="stats-bar">
   <div class="stat"><span class="stat-label">Total Admins</span><span class="stat-value" id="statTotal">—</span></div>
